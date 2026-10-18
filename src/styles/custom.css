@@ -1,0 +1,51 @@
+:root {
+  --ancora-fundo: #D3E3FA;
+  --ancora-azul-marinho: #0B2A5B;
+  --ancora-azul-vivo: #0A4FD6;
+  --ancora-link: #1D4ED8;
+  --ancora-texto: #111827;
+  --ancora-alerta-vermelho: #DC2626;
+  --ancora-alerta-amarelo: #FACC15;
+
+  --bs-primary: var(--ancora-azul-vivo);
+  --bs-primary-rgb: 10, 79, 214;
+  --bs-body-bg: var(--ancora-fundo);
+  --bs-body-color: var(--ancora-texto);
+  --bs-link-color: var(--ancora-link);
+  --bs-link-color-rgb: 29, 78, 216;
+  --bs-danger: var(--ancora-alerta-vermelho);
+  --bs-warning: var(--ancora-alerta-amarelo);
+}
+
+body {
+  font-family: 'Raleway', sans-serif;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--ancora-azul-vivo);
+  --bs-btn-border-color: var(--ancora-azul-marinho);
+  --bs-btn-hover-bg: #0839A6;
+  --bs-btn-hover-border-color: #0839A6;
+  --bs-btn-active-bg: #0839A6;
+  --bs-btn-active-border-color: #0839A6;
+  --bs-btn-disabled-bg: var(--ancora-azul-vivo);
+  --bs-btn-disabled-border-color: var(--ancora-azul-vivo);
+}
+
+.card-login {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 12px;
+}
+
+.logo-sistema {
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  color: var(--ancora-azul-marinho);
+}
+
+.logo-ancora {
+  font-weight: 700;
+  font-size: 2rem;
+  color: var(--ancora-azul-marinho);
+}
