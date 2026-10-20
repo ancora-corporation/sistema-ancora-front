@@ -1,0 +1,48 @@
+:root {
+  --ancora-fundo: #D3E3FA;
+  --ancora-azul-marinho: #0B2A5B;
+  --ancora-azul-vivo: #0A4FD6;
+  --ancora-link: #1D4ED8;
+  --ancora-texto: #111827;
+  --ancora-alerta-vermelho: #DC2626;
+  --ancora-alerta-amarelo: #FACC15;
+
+  --bs-primary: var(--ancora-azul-vivo);
+  --bs-primary-rgb: 10, 79, 214;
+  --bs-body-bg: var(--ancora-fundo);
+  --bs-body-color: var(--ancora-texto);
+  --bs-link-color: var(--ancora-link);
+  --bs-danger: var(--ancora-alerta-vermelho);
+  --bs-warning: var(--ancora-alerta-amarelo);
+}
+
+body {
+  font-family: "Raleway", sans-serif;
+  background-color: var(--ancora-fundo);
+  color: var(--ancora-texto);
+}
+
+/* No Bootstrap 5.3, o botão primário tem as próprias variáveis de cor */
+.btn-primary {
+  --bs-btn-bg: var(--ancora-azul-vivo);
+  --bs-btn-border-color: var(--ancora-azul-vivo);
+  --bs-btn-hover-bg: #0839A6;
+  --bs-btn-hover-border-color: #0839A6;
+  --bs-btn-active-bg: #0839A6;
+  --bs-btn-active-border-color: #0839A6;
+  --bs-btn-disabled-bg: var(--ancora-azul-vivo);
+  --bs-btn-disabled-border-color: var(--ancora-azul-vivo);
+}
+
+/* Campos arredondados do login */
+
+.campo-ancora {
+  background-color: #ffffff;
+  border: none;
+  padding: 0.9rem 1.5rem;
+}
+
+.campo-ancora:focus {
+  background-color: #ffffff;
+  box-shadow: 0 0 0 0.2rem rgba(10, 79, 214, 0.3);
+}
