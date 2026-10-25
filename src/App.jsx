@@ -14,6 +14,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/dashboard';
 import DetalhesAluno from './pages/detalhesaluno';
 import PainelEscola from './pages/painelescola';
+import Alunos from './pages/alunos';
 
 // Importa o componente responsável por proteger as rotas.
 import RotaProtegida from './components/RotaProtegida';
@@ -30,6 +31,16 @@ export default function App() {
         element={
           <RotaProtegida>
             <Dashboard />
+          </RotaProtegida>
+        }
+      />
+
+      {/* Listagem de alunos */}
+      <Route
+        path="/alunos"
+        element={
+          <RotaProtegida>
+            <Alunos />
           </RotaProtegida>
         }
       />
