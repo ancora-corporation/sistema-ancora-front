@@ -49,3 +49,15 @@ body {
   font-size: 2rem;
   color: var(--ancora-azul-marinho);
 }
+
+/* Campos arredondados e brancos da tela de login */
+.campo-ancora {
+  background-color: #ffffff;
+  border: none;
+  padding: 0.9rem 1.5rem;
+}
+
+.campo-ancora:focus {
+  background-color: #ffffff;
+  box-shadow: 0 0 0 0.2rem rgba(10, 79, 214, 0.3);
+}
