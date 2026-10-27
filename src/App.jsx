@@ -73,19 +73,22 @@ export default function App() {
 />
 
 {/* Área administrativa — nível 3 */}
-<Route
-  path="/admin"
-  element={
-    <RotaProtegida niveis={[3]}>
-      <AdminLayout />
-    </RotaProtegida>
-  }
->
-  <Route index element={<PainelRede />} />
+      <Route
+        path="/admin"
+        element={
+          <RotaProtegida niveis={[3]}>
+            <AdminLayout />
+          </RotaProtegida>
+        }
+      >
+        <Route index element={<PainelRede />} />
 
-  {/* Futuras telas administrativas */}
-  {/* alertas, escolas, alunos, usuarios, contas */}
-</Route>
+        {/* Futuras telas administrativas */}
+        {/* alertas, escolas, alunos, usuarios, contas */}
+      </Route>
+
+      {/* Endereços não reconhecidos retornam para o login */}
+      <Route
         path="*"
         element={<Navigate to="/login" replace />}
       />
