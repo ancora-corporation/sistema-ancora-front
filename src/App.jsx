@@ -1,22 +1,21 @@
 /*
- * Arquivo: App.jsx
- * Projeto: Sistema Âncora
+- Arquivo: App.jsx
+- Projeto: Sistema Âncora
  *
- * Objetivo:
- * Centralizar as rotas de navegação da aplicação.
+- Objetivo:
+- Centralizar as rotas de navegação da aplicação.
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-// Importa as páginas existentes do sistema.
 import Login from './pages/Login';
 import Dashboard from './pages/dashboard';
 import DetalhesAluno from './pages/detalhesaluno';
 import PainelEscola from './pages/painelescola';
 import Alunos from './pages/alunos';
+import Contas from './pages/contas';
 import PainelRede from './pages/admin/PainelRede';
 
-// Importa o componente responsável por proteger as rotas.
 import RotaProtegida from './components/RotaProtegida';
 
 // Importa o layout (menu superior) da área do administrador.
@@ -25,10 +24,8 @@ import AdminLayout from './components/AdminLayout';
 export default function App() {
   return (
     <Routes>
-      {/* Página de acesso ao sistema */}
       <Route path="/login" element={<Login />} />
 
-      {/* Dashboard: exige que o usuário passe pela proteção existente */}
       <Route
         path="/dashboard"
         element={
@@ -38,7 +35,6 @@ export default function App() {
         }
       />
 
-      {/* Listagem de alunos */}
       <Route
         path="/alunos"
         element={
@@ -48,8 +44,6 @@ export default function App() {
         }
       />
 
-      {/* Página de detalhes de um aluno */}
-      {/* Exemplo de endereço: /alunos/123 */}
       <Route
         path="/alunos/:id"
         element={
@@ -59,7 +53,6 @@ export default function App() {
         }
       />
 
-      {/* Painel geral da escola */}
       <Route
         path="/painel-escola"
         element={
@@ -69,8 +62,17 @@ export default function App() {
         }
       />
 
-      {/* Área do administrador (nível 3): todas as telas ficam sob /admin */}
-      {/* O AdminLayout mantém o menu fixo e mostra cada tela no <Outlet /> */}
+      {/* Tela de contas */}
+<Route
+  path="/contas"
+  element={
+    <RotaProtegida>
+      <Contas />
+    </RotaProtegida>
+  }
+/>
+
+{/* Área administrativa — nível 3 */}
       <Route
         path="/admin"
         element={
@@ -80,7 +82,9 @@ export default function App() {
         }
       >
         <Route index element={<PainelRede />} />
-        {/* Próximas telas: alertas, escolas, escolas/:escolaId, alunos/:alunoId, usuarios, contas */}
+
+        {/* Futuras telas administrativas */}
+        {/* alertas, escolas, alunos, usuarios, contas */}
       </Route>
 
       {/* Endereços não reconhecidos retornam para o login */}
