@@ -1,4 +1,3 @@
-
 /*
  * Arquivo: App.jsx
  * Projeto: Sistema Âncora
@@ -15,9 +14,13 @@ import Dashboard from './pages/dashboard';
 import DetalhesAluno from './pages/detalhesaluno';
 import PainelEscola from './pages/painelescola';
 import Alunos from './pages/alunos';
+import PainelRede from './pages/admin/PainelRede';
 
 // Importa o componente responsável por proteger as rotas.
 import RotaProtegida from './components/RotaProtegida';
+
+// Importa o layout (menu superior) da área do administrador.
+import AdminLayout from './components/AdminLayout';
 
 export default function App() {
   return (
@@ -65,6 +68,20 @@ export default function App() {
           </RotaProtegida>
         }
       />
+
+      {/* Área do administrador (nível 3): todas as telas ficam sob /admin */}
+      {/* O AdminLayout mantém o menu fixo e mostra cada tela no <Outlet /> */}
+      <Route
+        path="/admin"
+        element={
+          <RotaProtegida niveis={[3]}>
+            <AdminLayout />
+          </RotaProtegida>
+        }
+      >
+        <Route index element={<PainelRede />} />
+        {/* Próximas telas: alertas, escolas, escolas/:escolaId, alunos/:alunoId, usuarios, contas */}
+      </Route>
 
       {/* Endereços não reconhecidos retornam para o login */}
       <Route
