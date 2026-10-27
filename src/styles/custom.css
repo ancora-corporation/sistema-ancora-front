@@ -61,3 +61,18 @@ body {
   background-color: #ffffff;
   box-shadow: 0 0 0 0.2rem rgba(10, 79, 214, 0.3);
 }
+
+.nav-pills {
+  --bs-nav-pills-link-active-bg: var(--ancora-azul-vivo);
+  --bs-nav-link-color: var(--ancora-azul-marinho);
+  --bs-nav-link-hover-color: var(--ancora-azul-vivo);
+}
+
+.cartao-clicavel {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cartao-clicavel:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0.5rem 1rem rgba(11, 42, 91, 0.15) !important;
+}

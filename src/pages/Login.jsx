@@ -13,7 +13,7 @@ export default function Login() {
   const [validado, setValidado] = useState(false);
 
   if (Auth.estaLogado()) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={Auth.rotaInicial()} replace />;
   }
 
   async function entrar(evento) {
@@ -27,9 +27,9 @@ export default function Login() {
 
     setCarregando(true);
     try {
-      const { token } = await Auth.login(email.trim(), senha);
-      Auth.salvarToken(token);
-      navigate('/dashboard');
+      const resposta = await Auth.login(email.trim(), senha);
+      Auth.salvarSessao(resposta);
+      navigate(Auth.rotaInicial());
     } catch (e) {
       setErro(e.message);
       setCarregando(false);
