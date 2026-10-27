@@ -14,8 +14,12 @@ import DetalhesAluno from './pages/detalhesaluno';
 import PainelEscola from './pages/painelescola';
 import Alunos from './pages/alunos';
 import Contas from './pages/contas';
+import PainelRede from './pages/admin/PainelRede';
 
 import RotaProtegida from './components/RotaProtegida';
+
+// Importa o layout (menu superior) da área do administrador.
+import AdminLayout from './components/AdminLayout';
 
 export default function App() {
   return (
@@ -58,16 +62,30 @@ export default function App() {
         }
       />
 
-      <Route
-        path="/contas"
-        element={
-          <RotaProtegida>
-            <Contas />
-          </RotaProtegida>
-        }
-      />
+      {/* Tela de contas */}
+<Route
+  path="/contas"
+  element={
+    <RotaProtegida>
+      <Contas />
+    </RotaProtegida>
+  }
+/>
 
-      <Route
+{/* Área administrativa — nível 3 */}
+<Route
+  path="/admin"
+  element={
+    <RotaProtegida niveis={[3]}>
+      <AdminLayout />
+    </RotaProtegida>
+  }
+>
+  <Route index element={<PainelRede />} />
+
+  {/* Futuras telas administrativas */}
+  {/* alertas, escolas, alunos, usuarios, contas */}
+</Route>
         path="*"
         element={<Navigate to="/login" replace />}
       />
