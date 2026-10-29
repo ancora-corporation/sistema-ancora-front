@@ -13,6 +13,7 @@ import Dashboard from './pages/dashboard';
 import DetalhesAluno from './pages/detalhesaluno';
 import PainelEscola from './pages/painelescola';
 import Alunos from './pages/alunos';
+import PainelAlunos from './pages/painelalunos';
 import Contas from './pages/contas';
 import PainelRede from './pages/admin/PainelRede';
 
@@ -58,6 +59,16 @@ export default function App() {
         element={
           <RotaProtegida>
             <PainelEscola />
+          </RotaProtegida>
+        }
+      />
+
+      {/* Painel Alunos (nível de acesso 1 - Assistência Social) */}
+      <Route
+        path="/painel-alunos"
+        element={
+          <RotaProtegida>
+            <PainelAlunos />
           </RotaProtegida>
         }
       />
