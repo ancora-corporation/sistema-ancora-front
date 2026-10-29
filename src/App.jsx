@@ -14,6 +14,7 @@ import Dashboard from './pages/dashboard';
 import DetalhesAluno from './pages/detalhesaluno';
 import PainelEscola from './pages/painelescola';
 import Alunos from './pages/alunos';
+import BuscarAlunos from './pages/buscaralunos';
 import PainelAlunos from './pages/painelalunos';
 import Contas from './pages/contas';
 import Ocorrencias from './pages/ocorrencias';
@@ -70,6 +71,16 @@ export default function App() {
         }
       />
 
+            {/* Tela Alunos (nível de acesso 1 - Assistência Social) */}
+      <Route
+        path="/buscar-alunos"
+        element={
+          <RotaProtegida>
+            <BuscarAlunos />
+          </RotaProtegida>
+        }
+      />
+      
       {/* Gerenciamento de contas */}
       {/* Painel Alunos (nível de acesso 1 - Assistência Social) */}
       <Route
