@@ -1,9 +1,10 @@
+
 /*
-- Arquivo: App.jsx
-- Projeto: Sistema Âncora
+ * Arquivo: App.jsx
+ * Projeto: Sistema Âncora
  *
-- Objetivo:
-- Centralizar as rotas de navegação da aplicação.
+ * Objetivo:
+ * Centralizar as rotas de navegação da aplicação.
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -15,6 +16,7 @@ import PainelEscola from './pages/painelescola';
 import Alunos from './pages/alunos';
 import PainelAlunos from './pages/painelalunos';
 import Contas from './pages/contas';
+import Ocorrencias from './pages/ocorrencias';
 import PainelRede from './pages/admin/PainelRede';
 
 import RotaProtegida from './components/RotaProtegida';
@@ -25,8 +27,10 @@ import AdminLayout from './components/AdminLayout';
 export default function App() {
   return (
     <Routes>
+      {/* Página de login */}
       <Route path="/login" element={<Login />} />
 
+      {/* Painel principal */}
       <Route
         path="/dashboard"
         element={
@@ -36,6 +40,7 @@ export default function App() {
         }
       />
 
+      {/* Listagem de alunos */}
       <Route
         path="/alunos"
         element={
@@ -45,6 +50,7 @@ export default function App() {
         }
       />
 
+      {/* Detalhes de um aluno */}
       <Route
         path="/alunos/:id"
         element={
@@ -54,6 +60,7 @@ export default function App() {
         }
       />
 
+      {/* Painel da escola */}
       <Route
         path="/painel-escola"
         element={
@@ -63,6 +70,7 @@ export default function App() {
         }
       />
 
+      {/* Gerenciamento de contas */}
       {/* Painel Alunos (nível de acesso 1 - Assistência Social) */}
       <Route
         path="/painel-alunos"
@@ -73,6 +81,17 @@ export default function App() {
         }
       />
 
+      {/* Acompanhamento de ocorrências */}
+      <Route
+        path="/ocorrencias"
+        element={
+          <RotaProtegida>
+            <Ocorrencias />
+          </RotaProtegida>
+        }
+      />
+
+      {/* Redireciona rotas desconhecidas para o login */}
       {/* Tela de contas */}
 <Route
   path="/contas"
