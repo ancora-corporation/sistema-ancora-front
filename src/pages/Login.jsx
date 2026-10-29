@@ -13,7 +13,7 @@ export default function Login() {
   const [validado, setValidado] = useState(false);
 
   if (Auth.estaLogado()) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={Auth.rotaInicial()} replace />;
   }
 
   async function entrar(evento) {
@@ -27,9 +27,9 @@ export default function Login() {
 
     setCarregando(true);
     try {
-      const { token } = await Auth.login(email.trim(), senha);
-      Auth.salvarToken(token);
-      navigate('/dashboard');
+      const resposta = await Auth.login(email.trim(), senha);
+      Auth.salvarSessao(resposta);
+      navigate(Auth.rotaInicial());
     } catch (e) {
       setErro(e.message);
       setCarregando(false);
@@ -40,18 +40,18 @@ export default function Login() {
     <main className="min-vh-100 d-flex align-items-center justify-content-center p-3">
       <div className="card card-login shadow border-0 p-4">
         <div className="d-flex align-items-center justify-content-center gap-3 mb-4">
-  <img
-    src={iconeAncora}
-    alt=""
-    className="logo-icone"
-    width={100}
-    height={100}
-  />
-  <div className="text-start">
-    <div className="logo-sistema">SISTEMA</div>
-    <div className="logo-ancora">ÂNCORA</div>
-  </div>
-</div>
+          <img
+            src={iconeAncora}
+            alt=""
+            className="logo-icone"
+            width={100}
+            height={100}
+          />
+          <div className="text-start">
+            <div className="logo-sistema">SISTEMA</div>
+            <div className="logo-ancora">ÂNCORA</div>
+          </div>
+        </div>
 
         <form
           onSubmit={entrar}
@@ -59,11 +59,11 @@ export default function Login() {
           className={validado ? 'was-validated' : ''}
         >
           <div className="mb-3">
-            <label htmlFor="email" className="form-label">E-mail</label>
+            <label htmlFor="email" className="form-label fs-5">Login:</label>
             <input
               id="email"
               type="email"
-              className="form-control"
+              className="form-control form-control-lg rounded-pill campo-ancora"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -72,11 +72,11 @@ export default function Login() {
           </div>
 
           <div className="mb-3">
-            <label htmlFor="senha" className="form-label">Senha</label>
+            <label htmlFor="senha" className="form-label fs-5">Senha:</label>
             <input
               id="senha"
               type="password"
-              className="form-control"
+              className="form-control form-control-lg rounded-pill campo-ancora"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               minLength={6}
@@ -95,7 +95,7 @@ export default function Login() {
 
           <button
             type="submit"
-            className="btn btn-primary w-100"
+            className="btn btn-primary btn-lg rounded-pill w-100 py-3 fw-bold"
             disabled={carregando}
           >
             {carregando ? 'Entrando...' : 'Entrar'}
