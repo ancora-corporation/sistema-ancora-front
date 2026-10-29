@@ -16,6 +16,7 @@ import PainelEscola from './pages/diretor/PainelEscola';
 import Alunos from './pages/compartilhados/Alunos';
 import BuscarAlunos from './pages/compartilhados/BuscarAlunos';
 import PainelAlunos from './pages/social/PainelAlunos';
+import Intervencoes from './pages/social/Intervencoes';
 import Contas from './pages/diretor/Contas';
 import Ocorrencias from './pages/diretor/Ocorrencias';
 import PainelRede from './pages/admin/PainelRede';
@@ -127,6 +128,16 @@ export default function App() {
         {/* Futuras telas administrativas */}
         {/* alertas, escolas, alunos, usuarios, contas */}
       </Route>
+
+          {/* Intervenções (nível de acesso 1 - Assistência Social) */}
+          <Route
+           path="/intervencoes"
+           element={
+            <RotaProtegida>
+            <Intervencoes />
+          </RotaProtegida>
+        }
+      />
 
       {/* Endereços não reconhecidos retornam para o login */}
       <Route
