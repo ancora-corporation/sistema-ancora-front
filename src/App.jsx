@@ -11,13 +11,13 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 import Login from './pages/Login';
 import Dashboard from './pages/dashboard';
-import DetalhesAluno from './pages/detalhesaluno';
-import PainelEscola from './pages/painelescola';
-import Alunos from './pages/alunos';
-import BuscarAlunos from './pages/buscaralunos';
-import PainelAlunos from './pages/painelalunos';
-import Contas from './pages/contas';
-import Ocorrencias from './pages/ocorrencias';
+import DetalhesAluno from './pages/compartilhados/DetalhesAluno';
+import PainelEscola from './pages/diretor/PainelEscola';
+import Alunos from './pages/compartilhados/Alunos';
+import BuscarAlunos from './pages/compartilhados/BuscarAlunos';
+import PainelAlunos from './pages/social/PainelAlunos';
+import Contas from './pages/diretor/Contas';
+import Ocorrencias from './pages/diretor/Ocorrencias';
 import PainelRede from './pages/admin/PainelRede';
 
 import RotaProtegida from './components/RotaProtegida';

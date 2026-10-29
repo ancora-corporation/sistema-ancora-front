@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Auth } from '../services/auth';
-import iconeAncora from '../assets/icone-sistema.png';
+import { Auth } from '../../services/auth';
+import iconeAncora from '../../assets/icone-sistema.png';
 
 /*
  * Arquivo: buscaralunos.jsx
