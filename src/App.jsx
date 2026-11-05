@@ -20,6 +20,7 @@ import Contas from './pages/diretor/Contas';
 import Ocorrencias from './pages/diretor/Ocorrencias';
 import PainelRede from './pages/admin/PainelRede';
 import AlertasRede from './pages/admin/AlertasRede';
+import UsuariosRede from './pages/admin/UsuariosRede';
 
 import RotaProtegida from './components/RotaProtegida';
 
@@ -134,6 +135,7 @@ export default function App() {
       >
         <Route index element={<PainelRede />} />
         <Route path="alertas" element={<AlertasRede />} />
+        <Route path="usuarios" element={<UsuariosRede />} />
 
         {/* Próximas telas: escolas, escolas/:escolaId, alunos/:alunoId, usuarios, contas */}
       </Route>
