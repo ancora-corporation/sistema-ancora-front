@@ -1,4 +1,3 @@
-
 /*
  * Arquivo: App.jsx
  * Projeto: Sistema Âncora
@@ -20,6 +19,7 @@ import Intervencoes from './pages/social/Intervencoes';
 import Contas from './pages/diretor/Contas';
 import Ocorrencias from './pages/diretor/Ocorrencias';
 import PainelRede from './pages/admin/PainelRede';
+import AlertasRede from './pages/admin/AlertasRede';
 
 import RotaProtegida from './components/RotaProtegida';
 
@@ -72,7 +72,7 @@ export default function App() {
         }
       />
 
-            {/* Tela Alunos (nível de acesso 1 - Assistência Social) */}
+      {/* Tela Alunos (nível de acesso 1 - Assistência Social) */}
       <Route
         path="/buscar-alunos"
         element={
@@ -81,8 +81,7 @@ export default function App() {
           </RotaProtegida>
         }
       />
-      
-      {/* Gerenciamento de contas */}
+
       {/* Painel Alunos (nível de acesso 1 - Assistência Social) */}
       <Route
         path="/painel-alunos"
@@ -103,18 +102,28 @@ export default function App() {
         }
       />
 
-      {/* Redireciona rotas desconhecidas para o login */}
-      {/* Tela de contas */}
-<Route
-  path="/contas"
-  element={
-    <RotaProtegida>
-      <Contas />
-    </RotaProtegida>
-  }
-/>
+      {/* Gerenciamento de contas */}
+      <Route
+        path="/contas"
+        element={
+          <RotaProtegida>
+            <Contas />
+          </RotaProtegida>
+        }
+      />
 
-{/* Área administrativa — nível 3 */}
+      {/* Intervenções (nível de acesso 1 - Assistência Social) */}
+      <Route
+        path="/intervencoes"
+        element={
+          <RotaProtegida>
+            <Intervencoes />
+          </RotaProtegida>
+        }
+      />
+
+      {/* Área administrativa (nível 3): todas as telas ficam sob /admin */}
+      {/* O AdminLayout mantém o menu fixo e mostra cada tela no <Outlet /> */}
       <Route
         path="/admin"
         element={
@@ -124,20 +133,10 @@ export default function App() {
         }
       >
         <Route index element={<PainelRede />} />
+        <Route path="alertas" element={<AlertasRede />} />
 
-        {/* Futuras telas administrativas */}
-        {/* alertas, escolas, alunos, usuarios, contas */}
+        {/* Próximas telas: escolas, escolas/:escolaId, alunos/:alunoId, usuarios, contas */}
       </Route>
-
-          {/* Intervenções (nível de acesso 1 - Assistência Social) */}
-          <Route
-           path="/intervencoes"
-           element={
-            <RotaProtegida>
-            <Intervencoes />
-          </RotaProtegida>
-        }
-      />
 
       {/* Endereços não reconhecidos retornam para o login */}
       <Route
