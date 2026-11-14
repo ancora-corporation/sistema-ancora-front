@@ -5,6 +5,7 @@ const NIVEIS_ACESSO = {
   1: { rotulo: 'Nível 1 - Assistência social', classe: 'text-bg-info' },
   2: { rotulo: 'Nível 2 - Direção', classe: 'text-bg-primary' },
   3: { rotulo: 'Nível 3 - Administrador', classe: 'text-bg-dark' },
+  4: { rotulo: 'Nível 4 - Professor', classe: 'text-bg-success' },
 };
 
 // Opções do filtro de escola, tiradas dos próprios dados (sem repetir e sem vazios)

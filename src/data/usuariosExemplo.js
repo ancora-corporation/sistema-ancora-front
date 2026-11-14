@@ -1,7 +1,7 @@
 // DADOS FICTÍCIOS, só para montar a tela.
 // Nunca colocar dados reais de pessoas neste repositório.
 //
-// nivel: 1 = Assistência social | 2 = Direção | 3 = Administrador
+// nivel: 1 = Assistência social | 2 = Direção | 3 = Administrador | 4 = Professor
 // escolaId e escola ficam vazios para quem não é vinculado a uma escola
 export const usuariosExemplo = [
   { id: 1, nome: 'Usuário Exemplo 01', matricula: 'F-0001', email: 'usuario01@example.com', telefone: '(00) 90000-0001', nivel: 3, escolaId: null, escola: null },
@@ -16,4 +16,7 @@ export const usuariosExemplo = [
   { id: 10, nome: 'Usuário Exemplo 10', matricula: 'F-0010', email: 'usuario10@example.com', telefone: '(00) 90000-0010', nivel: 1, escolaId: 4, escola: 'Escola Municipal Exemplo D' },
   { id: 11, nome: 'Usuário Exemplo 11', matricula: 'F-0011', email: 'usuario11@example.com', telefone: '(00) 90000-0011', nivel: 2, escolaId: 5, escola: 'Escola Municipal Exemplo E' },
   { id: 12, nome: 'Usuário Exemplo 12', matricula: 'F-0012', email: 'usuario12@example.com', telefone: '(00) 90000-0012', nivel: 1, escolaId: 6, escola: 'Escola Municipal Exemplo F' },
+  { id: 13, nome: 'Professora Exemplo', matricula: 'P-0001', email: 'professor@ancora.com', telefone: '(00) 90000-0013', nivel: 4, escolaId: 1, escola: 'Escola Municipal Exemplo A' },
+  { id: 14, nome: 'Assistente Social Exemplo', matricula: 'S-0001', email: 'social@ancora.com', telefone: '(00) 90000-0014', nivel: 1, escolaId: 1, escola: 'Escola Municipal Exemplo A' },
+  { id: 15, nome: 'Diretor Exemplo', matricula: 'D-0001', email: 'diretor@ancora.com', telefone: '(00) 90000-0015', nivel: 2, escolaId: 1, escola: 'Escola Municipal Exemplo A' },
 ];

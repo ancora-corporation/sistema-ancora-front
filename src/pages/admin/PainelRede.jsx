@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import CartaoIndicador from '../../components/CartaoIndicador';
+import { alertasExemplo } from '../../data/alertasExemplo';
+import { usuariosExemplo } from '../../data/usuariosExemplo';
 
 // VALORES FICTÍCIOS, só para montar a tela.
 // Quando a API existir, estes números passam a vir dela.
@@ -21,7 +23,20 @@ const atalhos = [
 
 export default function PainelRede() {
   function gerarRelatorio() {
-    // TODO: gerar o CSV da rede (fica para a integração com a API)
+    const linhas = [
+      ['Escola', 'Código', 'Alunos cadastrados', 'Profissionais', 'Alertas em aberto', 'Alertas em atraso'],
+      ...[...new Map(usuariosExemplo.filter((usuario) => usuario.escolaId).map((usuario) => [usuario.escolaId, usuario.escola])).entries()].map(([id, escola]) => {
+        const alertas = alertasExemplo.filter((alerta) => alerta.escola === escola);
+        return [escola, `EM-${String(id).padStart(3, '0')}`, '—', usuariosExemplo.filter((usuario) => usuario.escolaId === id).length, alertas.filter((alerta) => ['novo', 'em_andamento'].includes(alerta.status)).length, alertas.filter((alerta) => alerta.status === 'em_atraso').length];
+      }),
+    ];
+    const csv = `\uFEFF${linhas.map((linha) => linha.map((valor) => `"${String(valor).replaceAll('"', '""')}"`).join(';')).join('\r\n')}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'relatorio-rede-ancora.csv';
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (

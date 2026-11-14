@@ -76,3 +76,32 @@ body {
   transform: translateY(-3px);
   box-shadow: 0 0.5rem 1rem rgba(11, 42, 91, 0.15) !important;
 }
+
+.ancora-professor {
+  max-width: 1480px;
+  min-height: 100vh;
+}
+
+.professor-icon {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: #eaf1ff;
+  color: var(--ancora-azul-vivo);
+  font-size: 1.35rem;
+}
+
+.ancora-professor .table > :not(caption) > * > * {
+  padding: 0.9rem 0.75rem;
+}
+
+@media (max-width: 575.98px) {
+  .card-login { padding: 1.25rem !important; }
+  .logo-icone { width: 76px; height: 76px; }
+  .ancora-professor .nav-pills { width: 100%; }
+  .ancora-professor .nav-link { flex: 1; }
+}

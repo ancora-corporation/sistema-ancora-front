@@ -7,7 +7,7 @@ const links = [
     { to: '/admin/alertas', rotulo: 'Alertas' },
     { to: '/admin/escolas', rotulo: 'Escolas' },
     { to: '/admin/usuarios', rotulo: 'Usuários' },
-    { to: 'admin/contas', rotulo:'Contas' },
+    { to: '/admin/contas', rotulo:'Contas' },
 ];
 
 export default function AdminLayout() {
