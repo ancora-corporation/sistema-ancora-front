@@ -21,6 +21,9 @@ import Ocorrencias from './pages/diretor/Ocorrencias';
 import PainelRede from './pages/admin/PainelRede';
 import AlertasRede from './pages/admin/AlertasRede';
 import UsuariosRede from './pages/admin/UsuariosRede';
+import EscolasRede from './pages/admin/EscolasRede';
+import ContasRede from './pages/admin/ContasRede';
+import PainelProfessor from './pages/professor/PainelProfessor';
 
 import RotaProtegida from './components/RotaProtegida';
 
@@ -37,7 +40,7 @@ export default function App() {
       <Route
         path="/dashboard"
         element={
-          <RotaProtegida>
+          <RotaProtegida niveis={[1, 2]}>
             <Dashboard />
           </RotaProtegida>
         }
@@ -47,7 +50,7 @@ export default function App() {
       <Route
         path="/alunos"
         element={
-          <RotaProtegida>
+          <RotaProtegida niveis={[1, 2]}>
             <Alunos />
           </RotaProtegida>
         }
@@ -57,7 +60,7 @@ export default function App() {
       <Route
         path="/alunos/:id"
         element={
-          <RotaProtegida>
+          <RotaProtegida niveis={[1, 2]}>
             <DetalhesAluno />
           </RotaProtegida>
         }
@@ -67,7 +70,7 @@ export default function App() {
       <Route
         path="/painel-escola"
         element={
-          <RotaProtegida>
+          <RotaProtegida niveis={[2]}>
             <PainelEscola />
           </RotaProtegida>
         }
@@ -77,7 +80,7 @@ export default function App() {
       <Route
         path="/buscar-alunos"
         element={
-          <RotaProtegida>
+          <RotaProtegida niveis={[1]}>
             <BuscarAlunos />
           </RotaProtegida>
         }
@@ -87,7 +90,7 @@ export default function App() {
       <Route
         path="/painel-alunos"
         element={
-          <RotaProtegida>
+          <RotaProtegida niveis={[1]}>
             <PainelAlunos />
           </RotaProtegida>
         }
@@ -97,7 +100,7 @@ export default function App() {
       <Route
         path="/ocorrencias"
         element={
-          <RotaProtegida>
+          <RotaProtegida niveis={[2]}>
             <Ocorrencias />
           </RotaProtegida>
         }
@@ -107,7 +110,7 @@ export default function App() {
       <Route
         path="/contas"
         element={
-          <RotaProtegida>
+          <RotaProtegida niveis={[2]}>
             <Contas />
           </RotaProtegida>
         }
@@ -117,7 +120,7 @@ export default function App() {
       <Route
         path="/intervencoes"
         element={
-          <RotaProtegida>
+          <RotaProtegida niveis={[1]}>
             <Intervencoes />
           </RotaProtegida>
         }
@@ -135,10 +138,13 @@ export default function App() {
       >
         <Route index element={<PainelRede />} />
         <Route path="alertas" element={<AlertasRede />} />
+        <Route path="escolas" element={<EscolasRede />} />
+        <Route path="escolas/:escolaId" element={<EscolasRede />} />
         <Route path="usuarios" element={<UsuariosRede />} />
-
-        {/* Próximas telas: escolas, escolas/:escolaId, alunos/:alunoId, usuarios, contas */}
+        <Route path="contas" element={<ContasRede />} />
       </Route>
+
+      <Route path="/professor" element={<RotaProtegida niveis={[4]}><PainelProfessor /></RotaProtegida>} />
 
       {/* Endereços não reconhecidos retornam para o login */}
       <Route

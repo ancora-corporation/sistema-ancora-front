@@ -101,6 +101,9 @@ export default function Login() {
             {carregando ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+        <p className="small text-body-secondary mt-3 mb-0 text-center">
+          Acessos de demonstração: admin@ancora.com, diretor@ancora.com, social@ancora.com ou professor@ancora.com · senha 123456
+        </p>
       </div>
     </main>
   );

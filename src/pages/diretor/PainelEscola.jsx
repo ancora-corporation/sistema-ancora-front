@@ -1,5 +1,16 @@
 
+import { Link, useNavigate } from 'react-router-dom';
+import { Auth } from '../../services/auth';
+
 export default function PainelEscola() {
+  const navigate = useNavigate();
+  const usuario = Auth.usuarioAtual();
+
+  function sair() {
+    Auth.sair();
+    navigate('/login');
+  }
+
   // Indicadores da escola.
   // Os dados serão preenchidos futuramente pela API.
   const indicadores = [
@@ -27,6 +38,18 @@ export default function PainelEscola() {
 
   return (
     <main className="container-fluid py-4 px-3 px-md-4">
+      <header className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <span className="small text-primary fw-bold text-uppercase">Área da direção</span>
+          <div className="text-secondary small">{usuario?.nome} · {usuario?.escola}</div>
+        </div>
+        <nav className="d-flex flex-wrap align-items-center gap-2" aria-label="Navegação da direção">
+          <Link to="/alunos" className="btn btn-outline-primary btn-sm">Alunos</Link>
+          <Link to="/ocorrencias" className="btn btn-outline-primary btn-sm">Ocorrências</Link>
+          <Link to="/contas" className="btn btn-outline-primary btn-sm">Contas</Link>
+          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={sair}>Sair</button>
+        </nav>
+      </header>
       {/* Cabeçalho da página */}
       <header className="mb-4">
         <h1 className="fw-bold mb-2">

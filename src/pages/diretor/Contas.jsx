@@ -1,6 +1,4 @@
 
-import React from "react";
-
 // Dados fictícios para demonstrar o visual da tela.
 // Serão substituídos pelos dados da API quando ela estiver disponível.
 const assistentesSociais = [

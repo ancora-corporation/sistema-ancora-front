@@ -12,7 +12,7 @@ export default function RotaProtegida({ niveis, children }) {
   // Vai para a tela inicial do próprio nível
   
   if (niveis && !niveis.includes(usuario.nivel)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={Auth.rotaInicial()} replace />;
   }
   return children;
 }
