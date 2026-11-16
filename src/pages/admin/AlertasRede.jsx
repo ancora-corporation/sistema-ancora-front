@@ -1,14 +1,11 @@
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { alertasExemplo } from '../../data/alertasExemplo';
+import { apiRequest } from '../../services/api';
+import { useApiResource } from '../../services/useApiResource';
 import {
   EtiquetaNivel,
-  EtiquetaStatus,
   TextoPrazo,
 } from '../../components/EtiquetasAlerta';
-
-// Opções dos filtros, tiradas dos próprios dados (sem repetir)
-const escolas = [...new Set(alertasExemplo.map((a) => a.escola))];
-const bairros = [...new Set(alertasExemplo.map((a) => a.bairro))];
 
 // O "T00:00:00" evita que a data apareça um dia antes por causa do fuso
 function formatarData(iso) {
@@ -25,6 +22,7 @@ function ordenarPorPrazo(a, b) {
 export default function AlertasRede() {
   // Os filtros ficam na URL (ex.: /admin/alertas?status=em_atraso)
   const [params, setParams] = useSearchParams();
+  const [erroAcao, setErroAcao] = useState('');
 
   const filtros = {
     escola: params.get('escola') || '',
@@ -46,7 +44,33 @@ export default function AlertasRede() {
 
   const temFiltro = Object.values(filtros).some(Boolean);
 
-  const visiveis = alertasExemplo
+  const { data: registros, loading, error, refresh } = useApiResource('/alerts', 'alertas');
+  const agora = new Date();
+  const alertas = registros.map((item) => ({
+    ...item,
+    alunoId: item.student_id,
+    aluno: item.student_name,
+    escola: item.school_name,
+    codigo: item.school_code,
+    bairro: item.district || '—',
+    data: item.created_at?.slice(0, 10),
+    nivel: item.risk_level,
+    prazoDias: item.due_at ? Math.ceil((new Date(`${item.due_at}T00:00:00`).getTime() - new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime()) / 86400000) : null,
+    status: item.status,
+    preenchidoPor: item.intervention_by,
+  }));
+  const escolas = [...new Set(alertas.map((alerta) => alerta.escola))];
+  const bairros = [...new Set(alertas.map((alerta) => alerta.bairro))];
+
+  async function atualizarStatus(id, status) {
+    try {
+      await apiRequest(`/alerts/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      setErroAcao('');
+      await refresh();
+    } catch (requestError) { setErroAcao(requestError.message); }
+  }
+
+  const visiveis = alertas
     .filter(
       (a) =>
         (!filtros.escola || a.escola === filtros.escola) &&
@@ -62,10 +86,11 @@ export default function AlertasRede() {
     <>
       <div className="mb-4">
         <h1 className="h2 mb-1">Alertas da rede</h1>
-        <p className="text-body-secondary mb-0">
-          Ordenados pelo menor prazo de resposta.
-        </p>
+        <p className="text-body-secondary mb-0">Alertas da escola/rede disponíveis para o seu perfil, ordenados pelo prazo.</p>
       </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
+      {erroAcao && <div className="alert alert-danger">{erroAcao}</div>}
 
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
@@ -121,10 +146,10 @@ export default function AlertasRede() {
                 onChange={(e) => alterarFiltro('status', e.target.value)}
               >
                 <option value="">Todos</option>
-                <option value="novo">Novo</option>
-                <option value="em_andamento">Em andamento</option>
-                <option value="concluido">Concluído</option>
-                <option value="em_atraso">Em atraso</option>
+                <option value="new">Novo</option>
+                <option value="in_progress">Em andamento</option>
+                <option value="resolved">Concluído</option>
+                <option value="overdue">Em atraso</option>
               </select>
             </div>
 
@@ -137,9 +162,9 @@ export default function AlertasRede() {
                 onChange={(e) => alterarFiltro('nivel', e.target.value)}
               >
                 <option value="">Todos</option>
-                <option value="alto">Alto</option>
-                <option value="medio">Médio</option>
-                <option value="baixo">Baixo</option>
+                <option value="high">Alto</option>
+                <option value="medium">Médio</option>
+                <option value="low">Baixo</option>
               </select>
             </div>
           </div>
@@ -157,7 +182,7 @@ export default function AlertasRede() {
       </div>
 
       <p className="small text-body-secondary">
-        Mostrando {visiveis.length} de {alertasExemplo.length} alertas
+        {loading ? 'Carregando alertas...' : `Mostrando ${visiveis.length} de ${alertas.length} alertas`}
       </p>
 
       <div className="card border-0 shadow-sm">
@@ -197,7 +222,7 @@ export default function AlertasRede() {
                   </td>
                   <td>{formatarData(a.data)}</td>
                   <td><EtiquetaNivel nivel={a.nivel} /></td>
-                  <td><EtiquetaStatus status={a.status} /></td>
+                  <td><select className="form-select form-select-sm" aria-label={`Status do alerta de ${a.aluno}`} value={a.status} onChange={(event) => atualizarStatus(a.id, event.target.value)}><option value="new">Novo</option><option value="in_progress">Em andamento</option><option value="resolved">Concluído</option><option value="overdue">Em atraso</option></select></td>
                   <td><TextoPrazo dias={a.prazoDias} /></td>
                   <td>
                     {a.preenchidoPor || (

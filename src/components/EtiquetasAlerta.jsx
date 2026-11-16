@@ -2,6 +2,9 @@ const NIVEIS = {
   alto: { rotulo: 'Alto', classe: 'text-bg-danger' },
   medio: { rotulo: 'Médio', classe: 'text-bg-warning' },
   baixo: { rotulo: 'Baixo', classe: 'text-bg-secondary' },
+  high: { rotulo: 'Alto', classe: 'text-bg-danger' },
+  medium: { rotulo: 'Médio', classe: 'text-bg-warning' },
+  low: { rotulo: 'Baixo', classe: 'text-bg-secondary' },
 };
 
 const STATUS = {
@@ -9,6 +12,10 @@ const STATUS = {
   em_andamento: { rotulo: 'Em andamento', classe: 'text-bg-info' },
   concluido: { rotulo: 'Concluído', classe: 'text-bg-success' },
   em_atraso: { rotulo: 'Em atraso', classe: 'text-bg-danger' },
+  new: { rotulo: 'Novo', classe: 'text-bg-primary' },
+  in_progress: { rotulo: 'Em andamento', classe: 'text-bg-info' },
+  resolved: { rotulo: 'Concluído', classe: 'text-bg-success' },
+  overdue: { rotulo: 'Em atraso', classe: 'text-bg-danger' },
 };
 
 export function EtiquetaNivel({ nivel }) {

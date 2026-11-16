@@ -1,10 +1,14 @@
 
 import { useState } from 'react';
+import { apiRequest } from '../../services/api';
+import { useApiResource } from '../../services/useApiResource';
 
 export default function Ocorrencias() {
+  const { data: alertas, loading, error, refresh } = useApiResource('/alerts', 'alertas');
+  const [mensagem, setMensagem] = useState('');
   // Dados ilustrativos para desenvolver a interface.
   // Futuramente, as ocorrências serão carregadas pela API.
-  const ocorrencias = [
+  const ocorrenciasDemo = [
     {
       id: 1,
       titulo: 'Ocorrência de exemplo 01',
@@ -24,6 +28,15 @@ export default function Ocorrencias() {
       status: 'Concluída',
     },
   ];
+  const apiPronta = !loading && !error;
+  const ocorrencias = apiPronta ? alertas.map((alerta) => ({
+    id: alerta.id,
+    studentId: alerta.student_id,
+    alertId: alerta.id,
+    titulo: `${alerta.student_name} · ${({ attendance: 'Frequência', grade: 'Notas', combined: 'Acompanhamento', manual: 'Manual' })[alerta.kind]}`,
+    descricao: alerta.intervention_description ? `Último acompanhamento: ${alerta.intervention_description}` : alerta.summary,
+    status: ({ new: 'Em andamento', in_progress: 'Em andamento', overdue: 'Em atraso', resolved: 'Concluída' })[alerta.status],
+  })) : ocorrenciasDemo;
 
   // Controla a abertura do formulário e a ocorrência selecionada.
   const [ocorrenciaSelecionada, setOcorrenciaSelecionada] =
@@ -64,15 +77,18 @@ export default function Ocorrencias() {
   }
 
   // Trata o envio demonstrativo do formulário.
-  function salvarAcompanhamento(evento) {
+  async function salvarAcompanhamento(evento) {
     evento.preventDefault();
-
-    alert(
-      'Registro demonstrativo preenchido. ' +
-      'Os dados ainda não são enviados para uma API.'
-    );
-
-    setOcorrenciaSelecionada(null);
+    if (!apiPronta) {
+      setMensagem('A API está indisponível; o acompanhamento não foi enviado.');
+      return;
+    }
+    try {
+      await apiRequest('/interventions', { method: 'POST', body: JSON.stringify({ studentId: ocorrenciaSelecionada.studentId, alertId: ocorrenciaSelecionada.alertId, kind: formulario.providencia, description: formulario.descricao, occurredAt: formulario.data, outcome: [formulario.proximaProvidencia, formulario.resultado].filter(Boolean).join('\n'), followUpAt: formulario.prazo || undefined }) });
+      setMensagem('Acompanhamento registrado no banco de dados.');
+      setOcorrenciaSelecionada(null);
+      await refresh();
+    } catch (requestError) { setMensagem(requestError.message); }
   }
 
   // Conta quantas ocorrências existem em cada situação.
@@ -117,6 +133,7 @@ export default function Ocorrencias() {
           Acompanhe as ocorrências geradas a partir dos alertas escolares.
         </p>
       </header>
+      {(error || mensagem) && <div className={`alert ${error || !mensagem.includes('registrado') ? 'alert-warning' : 'alert-success'}`} role="status">{error || mensagem}</div>}
 
       {/* Indicadores de situação das ocorrências */}
       <section className="row g-3 mb-4">

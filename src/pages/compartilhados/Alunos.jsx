@@ -1,10 +1,12 @@
 
 import { useState } from "react";
+import { useApiResource } from '../../services/useApiResource';
 
 function Alunos() {
+  const { data: registros, loading, error } = useApiResource('/students', 'alunos');
   // Dados fictícios para visualizar a tabela durante o protótipo.
   // Eles deverão ser substituídos pelos dados reais quando houver integração.
-  const alunosExemplo = [
+  const alunosDemo = [
     {
       id: 1,
       nome: "Aluno Exemplo A",
@@ -51,6 +53,17 @@ function Alunos() {
       alerta: "Não definido",
     },
   ];
+
+  const alunosApi = registros.map((aluno) => ({
+    id: aluno.id,
+    nome: aluno.name,
+    matricula: aluno.enrollment,
+    ano: aluno.grade_levels,
+    turma: aluno.class_names,
+    turno: (aluno.shifts || '').split(', ').map((turno) => ({ morning: 'Manhã', afternoon: 'Tarde', evening: 'Noite' })[turno] || turno).join(', '),
+    alerta: ({ high: 'Alto', medium: 'Médio', low: 'Baixo' })[aluno.latest_risk_level] || 'Não definido',
+  }));
+  const alunosExemplo = error ? alunosDemo : alunosApi;
 
   // Estados que guardam os valores digitados e selecionados.
   const [pesquisa, setPesquisa] = useState("");
@@ -106,6 +119,8 @@ function Alunos() {
           Consulte e localize os alunos da escola.
         </p>
       </header>
+      {error && <div className="alert alert-warning">A API não respondeu. A lista abaixo é demonstrativa e não contém dados do banco. {error}</div>}
+      {loading && <p className="text-secondary">Carregando alunos...</p>}
 
       {/* Área de pesquisa */}
       <section className="card border-0 shadow-sm mb-4">

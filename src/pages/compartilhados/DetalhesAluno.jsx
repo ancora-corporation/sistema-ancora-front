@@ -1,10 +1,20 @@
 // Importa o hook que permite ler parâmetros da URL.
 // Exemplo de URL: /alunos/123
 import { useParams } from 'react-router-dom';
+import { useApiResource } from '../../services/useApiResource';
 
 export default function DetalhesAluno() {
   // Recupera o identificador do aluno informado na URL.
   const { id } = useParams();
+  const { data: aluno, loading, error } = useApiResource(`/students/${id}`, 'aluno', null);
+  const { data: frequencia } = useApiResource(`/students/${id}/attendance`, 'frequencia');
+  const { data: notas } = useApiResource(`/students/${id}/grades`, 'notas');
+  const { data: alertas } = useApiResource(`/alerts?studentId=${encodeURIComponent(id)}`, 'alertas');
+  const faltas = frequencia.filter((registro) => registro.status === 'absent');
+  const presencas = frequencia.filter((registro) => registro.status === 'present');
+  const percentualFrequencia = frequencia.length ? Math.round((presencas.length / frequencia.length) * 100) : null;
+  const mediaNotas = notas.length ? (notas.reduce((total, nota) => total + Number(nota.value), 0) / notas.length).toFixed(1) : '—';
+  const nivelRisco = alertas[0]?.risk_level;
 
   /*
    * Como ainda não estamos utilizando a API,
@@ -14,6 +24,8 @@ export default function DetalhesAluno() {
 
   return (
     <main className="container-fluid p-3 p-md-4">
+      {error && <div className="alert alert-danger">{error}</div>}
+      {loading && <p className="text-secondary">Carregando dados do aluno...</p>}
       {/* Cabeçalho da página e caminho de navegação */}
       <header className="mb-4">
         <p className="text-secondary mb-2">
@@ -55,29 +67,29 @@ export default function DetalhesAluno() {
                 style={{ width: '72px', height: '72px', fontSize: '1.5rem' }}
                 aria-label="Foto do aluno não disponível"
               >
-                ?
+                {aluno?.name?.charAt(0)?.toUpperCase() || '?'}
               </div>
             </div>
 
             {/* Informações básicas: serão preenchidas pela API futuramente */}
             <div className="col">
               <h2 className="h4 fw-bold mb-2">
-                Nome não disponível
+                {aluno?.name || 'Aluno não encontrado'}
               </h2>
 
               <p className="text-secondary mb-1">
-                Matrícula: {id || 'Não informada'}
+                Matrícula: {aluno?.enrollment || 'Não informada'}
               </p>
 
               <p className="text-secondary mb-0">
-                Turma: Sem dados disponíveis
+                Escola: {aluno?.school_name || '—'} · Turma: {aluno?.class_names || '—'}
               </p>
             </div>
 
             {/* Situação atual do cadastro */}
             <div className="col-12 col-lg-auto">
-              <span className="badge text-bg-secondary">
-                Aguardando dados
+              <span className={`badge ${nivelRisco === 'high' ? 'text-bg-danger' : nivelRisco === 'medium' ? 'text-bg-warning' : nivelRisco === 'low' ? 'text-bg-success' : 'text-bg-secondary'}`}>
+                {({ high: 'Risco alto', medium: 'Risco médio', low: 'Risco baixo' })[nivelRisco] || 'Sem alerta'}
               </span>
             </div>
           </div>
@@ -99,10 +111,10 @@ export default function DetalhesAluno() {
                   Frequência
                 </p>
 
-                <p className="h3 fw-bold mb-2">—</p>
+                <p className="h3 fw-bold mb-2">{percentualFrequencia == null ? '—' : `${percentualFrequencia}%`}</p>
 
                 <p className="small text-secondary mb-0">
-                  Sem dados disponíveis
+                  {frequencia.length ? `${presencas.length} presenças registradas` : 'Ainda sem chamada registrada'}
                 </p>
               </div>
             </article>
@@ -116,10 +128,10 @@ export default function DetalhesAluno() {
                   Total de faltas
                 </p>
 
-                <p className="h3 fw-bold mb-2">—</p>
+                <p className="h3 fw-bold mb-2">{faltas.length}</p>
 
                 <p className="small text-secondary mb-0">
-                  Sem dados disponíveis
+                  {frequencia.length ? `Em ${frequencia.length} registros de chamada` : 'Ainda sem chamada registrada'}
                 </p>
               </div>
             </article>
@@ -133,10 +145,10 @@ export default function DetalhesAluno() {
                   Faltas consecutivas
                 </p>
 
-                <p className="h3 fw-bold mb-2">—</p>
+                <p className="h3 fw-bold mb-2">{mediaNotas}</p>
 
                 <p className="small text-secondary mb-0">
-                  Sem dados disponíveis
+                  {notas.length ? `${notas.length} notas registradas` : 'Ainda sem notas lançadas'}
                 </p>
               </div>
             </article>
@@ -150,7 +162,7 @@ export default function DetalhesAluno() {
                   Indicador de risco
                 </p>
 
-                <p className="h3 fw-bold mb-2">—</p>
+                <p className="h3 fw-bold mb-2">{nivelRisco ? ({ high: 'Alto', medium: 'Médio', low: 'Baixo' })[nivelRisco] : '—'}</p>
 
                 <p className="small text-secondary mb-0">
                   Aguardando resultado do modelo
@@ -169,8 +181,7 @@ export default function DetalhesAluno() {
           </h2>
 
           <p className="text-secondary">
-            O histórico de presenças e faltas será exibido aqui
-            quando os dados estiverem disponíveis.
+            Presenças e faltas registradas pelos professores.
           </p>
 
           {/* Tabela preparada para receber registros futuramente */}
@@ -184,13 +195,7 @@ export default function DetalhesAluno() {
                 </tr>
               </thead>
 
-              <tbody>
-                <tr>
-                  <td colSpan="3" className="text-center text-secondary py-4">
-                    Sem dados disponíveis para exibição.
-                  </td>
-                </tr>
-              </tbody>
+              <tbody>{frequencia.length === 0 ? <tr><td colSpan="3" className="text-center text-secondary py-4">Sem dados disponíveis para exibição.</td></tr> : frequencia.map((registro, index) => <tr key={`${registro.lesson_date}-${index}`}><td>{new Date(`${registro.lesson_date}T00:00:00`).toLocaleDateString('pt-BR')}</td><td>{({ present: 'Presente', absent: 'Ausente', excused: 'Justificada' })[registro.status]}</td><td>{registro.note || registro.class_name}</td></tr>)}</tbody>
             </table>
           </div>
         </div>
@@ -203,9 +208,7 @@ export default function DetalhesAluno() {
             Alertas de frequência
           </h2>
 
-          <div className="alert alert-light border mb-0" role="status">
-            Não há alertas disponíveis para exibição neste momento.
-          </div>
+          {alertas.length === 0 ? <div className="alert alert-light border mb-0" role="status">Não há alertas disponíveis para exibição neste momento.</div> : <div className="table-responsive"><table className="table align-middle"><thead><tr><th>Data</th><th>Origem</th><th>Nível</th><th>Status</th><th>Descrição</th></tr></thead><tbody>{alertas.map((alerta) => <tr key={alerta.id}><td>{new Date(alerta.created_at).toLocaleDateString('pt-BR')}</td><td>{alerta.source === 'ml' ? `Modelo ${alerta.model_version || 'ML'}` : 'Manual'}</td><td>{({ high: 'Alto', medium: 'Médio', low: 'Baixo' })[alerta.risk_level]}</td><td>{({ new: 'Novo', in_progress: 'Em andamento', overdue: 'Em atraso', resolved: 'Concluído' })[alerta.status]}</td><td>{alerta.summary}</td></tr>)}</tbody></table></div>}
         </div>
       </section>
 
@@ -217,9 +220,7 @@ export default function DetalhesAluno() {
           </h2>
 
           <p className="text-secondary mb-0">
-            Os registros de acompanhamento, as ações realizadas
-            e os próximos encaminhamentos serão apresentados aqui
-            quando estiverem disponíveis.
+            {alertas.some((alerta) => alerta.intervention_description) ? alertas.filter((alerta) => alerta.intervention_description).map((alerta) => `${alerta.intervention_kind}: ${alerta.intervention_description}`).join(' · ') : 'Ainda não há intervenções registradas para este aluno.'}
           </p>
         </div>
       </section>
