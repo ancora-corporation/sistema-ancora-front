@@ -2,6 +2,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Auth } from '../../services/auth';
 import { useApiResource } from '../../services/useApiResource';
+import MinhaConta from '../../components/MinhaConta';
 
 export default function PainelEscola() {
   const navigate = useNavigate();
@@ -57,6 +58,7 @@ export default function PainelEscola() {
           <Link to="/alunos" className="btn btn-outline-primary btn-sm">Alunos</Link>
           <Link to="/ocorrencias" className="btn btn-outline-primary btn-sm">Ocorrências</Link>
           <Link to="/contas" className="btn btn-outline-primary btn-sm">Contas</Link>
+          <MinhaConta />
           <button type="button" className="btn btn-outline-secondary btn-sm" onClick={sair}>Sair</button>
         </nav>
       </header>

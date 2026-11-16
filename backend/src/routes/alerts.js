@@ -7,38 +7,139 @@ import { validate } from '../middleware/validate.js';
 const router = Router();
 router.use(authenticate);
 
+// A API mantém os valores em inglês que o front-end já utiliza; o banco os guarda em português.
+const statusToDatabase = {
+  new: 'novo',
+  in_progress: 'em_acompanhamento',
+  resolved: 'resolvido',
+  overdue: 'atrasado',
+};
+const riskToDatabase = { low: 'baixo', medium: 'medio', high: 'alto' };
+
 router.get('/', async (req, res) => {
   const { status, risk, studentId } = req.query;
-  if (studentId && !z.uuid().safeParse(studentId).success) return res.status(400).json({ error: 'studentId inválido.' });
+  if (studentId && !z.uuid().safeParse(studentId).success) {
+    return res.status(400).json({ error: 'studentId inválido.' });
+  }
+
   const { rows } = await pool.query(
-    `SELECT a.id, a.student_id, st.name AS student_name, st.enrollment, s.name AS school_name, s.code AS school_code, s.district,
-       a.kind, a.status, a.risk_level, a.risk_score, a.source, a.model_version, a.summary, a.due_at, a.created_at,
-       intervention.name AS intervention_by, intervention.kind AS intervention_kind,
-       intervention.description AS intervention_description, intervention.outcome AS intervention_outcome,
-       intervention.occurred_at AS intervention_occurred_at, intervention.follow_up_at AS intervention_follow_up_at,
-       student_class.name AS class_name
-     FROM alerts a JOIN students st ON st.id = a.student_id JOIN schools s ON s.id = st.school_id
-     LEFT JOIN LATERAL (SELECT u.name, i.kind, i.description, i.outcome, i.occurred_at, i.follow_up_at FROM interventions i JOIN users u ON u.id = i.created_by WHERE i.alert_id = a.id ORDER BY i.created_at DESC LIMIT 1) intervention ON TRUE
-     LEFT JOIN LATERAL (SELECT c.name FROM class_students cs JOIN classes c ON c.id = cs.class_id WHERE cs.student_id = st.id AND c.is_active ORDER BY c.academic_year DESC LIMIT 1) student_class ON TRUE
-     WHERE ($1 = 'admin' OR st.school_id = $2)
-       AND ($1 <> 'teacher' OR EXISTS (SELECT 1 FROM class_students cs JOIN classes c ON c.id = cs.class_id WHERE cs.student_id = st.id AND c.teacher_id = $3))
-       AND ($4::text IS NULL OR a.status = $4) AND ($5::text IS NULL OR a.risk_level = $5)
-       AND ($6::uuid IS NULL OR a.student_id = $6)
-     ORDER BY a.created_at DESC LIMIT 500`,
-    [req.user.role, req.user.schoolId, req.user.id, status || null, risk || null, studentId || null],
+    `SELECT a.id,
+       a.aluno_id AS student_id,
+       al.nome_aluno AS student_name,
+       al.matricula AS enrollment,
+       e.nome_escola AS school_name,
+       e.codigo_escola AS school_code,
+       e.bairro_escola AS district,
+       CASE a.tipo
+         WHEN 'frequencia' THEN 'attendance'
+         WHEN 'nota' THEN 'grade'
+         WHEN 'combinado' THEN 'combined'
+         ELSE a.tipo
+       END AS kind,
+       CASE a.situacao
+         WHEN 'novo' THEN 'new'
+         WHEN 'em_acompanhamento' THEN 'in_progress'
+         WHEN 'resolvido' THEN 'resolved'
+         WHEN 'atrasado' THEN 'overdue'
+       END AS status,
+       CASE a.nivel_risco
+         WHEN 'baixo' THEN 'low'
+         WHEN 'medio' THEN 'medium'
+         WHEN 'alto' THEN 'high'
+       END AS risk_level,
+       a.pontuacao_risco AS risk_score,
+       CASE a.origem WHEN 'modelo_ml' THEN 'ml' ELSE a.origem END AS source,
+       a.versao_modelo AS model_version,
+       a.resumo AS summary,
+       a.prazo AS due_at,
+       a.registro AS created_at,
+       acompanhamento.nome_usuario AS intervention_by,
+       acompanhamento.tipo AS intervention_kind,
+       acompanhamento.descricao AS intervention_description,
+       acompanhamento.resultado AS intervention_outcome,
+       acompanhamento.data_ocorrencia AS intervention_occurred_at,
+       acompanhamento.data_retorno AS intervention_follow_up_at,
+       turma.nome_turma AS class_name
+     FROM ALERTA a
+     JOIN ALUNO al ON al.id = a.aluno_id
+     JOIN ESCOLA e ON e.id = al.escola_id
+     LEFT JOIN LATERAL (
+       SELECT u.nome_usuario, i.tipo, i.descricao, i.resultado, i.data_ocorrencia, i.data_retorno
+       FROM INTERVENCAO i
+       JOIN USUARIO u ON u.id = i.registrada_por
+       WHERE i.alerta_id = a.id
+       ORDER BY i.registro DESC
+       LIMIT 1
+     ) acompanhamento ON TRUE
+     LEFT JOIN LATERAL (
+       SELECT CONCAT_WS(' - ', t.ano_serie, t.turno) AS nome_turma
+       FROM ALUNO_TURMA at
+       JOIN TURMA t ON t.id = at.turma_id
+       WHERE at.aluno_id = al.id AND t.status_turma
+       ORDER BY t.ano_letivo DESC
+       LIMIT 1
+     ) turma ON TRUE
+     WHERE ($1 IN ('admin', 'administrador') OR al.escola_id = $2)
+       AND ($1 NOT IN ('teacher', 'professor') OR EXISTS (
+         SELECT 1
+         FROM ALUNO_TURMA at
+         JOIN TURMA t ON t.id = at.turma_id
+         JOIN LOTACAO l ON l.id_turma = t.id
+         WHERE at.aluno_id = al.id AND t.status_turma AND l.id_professor = $3 AND l.ativa AND l.ano_letivo = t.ano_letivo
+       ))
+       AND ($4::text IS NULL OR a.situacao = $4)
+       AND ($5::text IS NULL OR a.nivel_risco = $5)
+       AND ($6::uuid IS NULL OR a.aluno_id = $6)
+     ORDER BY a.registro DESC
+     LIMIT 500`,
+    [
+      req.user.role,
+      req.user.schoolId,
+      req.user.id,
+      status ? (statusToDatabase[status] || status) : null,
+      risk ? (riskToDatabase[risk] || risk) : null,
+      studentId || null,
+    ],
   );
+
   res.json({ alertas: rows });
 });
 
-const statusSchema = z.object({ body: z.object({ status: z.enum(['new', 'in_progress', 'resolved', 'overdue']) }) });
-router.patch('/:id/status', allowRoles('admin', 'director', 'social'), validate(statusSchema), async (req, res) => {
-  const { rows: [alert] } = await pool.query(
-    `UPDATE alerts a SET status = $2, updated_at = NOW() FROM students st
-     WHERE a.id = $1 AND st.id = a.student_id AND ($3 = 'admin' OR st.school_id = $4)
-     RETURNING a.id, a.status, a.updated_at`, [req.params.id, req.validated.body.status, req.user.role, req.user.schoolId],
-  );
-  if (!alert) return res.status(404).json({ error: 'Alerta não encontrado.' });
-  res.json({ alerta: alert });
+const statusSchema = z.object({
+  body: z.object({ status: z.enum(['new', 'in_progress', 'resolved', 'overdue']) }),
 });
+
+router.patch(
+  '/:id/status',
+  allowRoles('admin', 'director', 'social', 'administrador', 'diretor', 'assistente_social'),
+  validate(statusSchema),
+  async (req, res) => {
+    const { rows: [alert] } = await pool.query(
+      `UPDATE ALERTA a
+       SET situacao = $2, atualizacao = NOW()
+       FROM ALUNO al
+       WHERE a.id = $1
+         AND al.id = a.aluno_id
+         AND ($3 IN ('admin', 'administrador') OR al.escola_id = $4)
+       RETURNING a.id,
+         CASE a.situacao
+           WHEN 'novo' THEN 'new'
+           WHEN 'em_acompanhamento' THEN 'in_progress'
+           WHEN 'resolvido' THEN 'resolved'
+           WHEN 'atrasado' THEN 'overdue'
+         END AS status,
+         a.atualizacao AS updated_at`,
+      [
+        req.params.id,
+        statusToDatabase[req.validated.body.status],
+        req.user.role,
+        req.user.schoolId,
+      ],
+    );
+
+    if (!alert) return res.status(404).json({ error: 'Alerta não encontrado.' });
+    res.json({ alerta: alert });
+  },
+);
 
 export default router;

@@ -14,6 +14,12 @@ export const Auth = {
     localStorage.setItem('usuario', JSON.stringify(usuario));
   },
 
+  atualizarUsuario(dados) {
+    const usuario = { ...Auth.usuarioAtual(), ...dados };
+    localStorage.setItem('usuario', JSON.stringify(usuario));
+    return usuario;
+  },
+
   usuarioAtual () {
     try {
       return JSON.parse(localStorage.getItem('usuario'))

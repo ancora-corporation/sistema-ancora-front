@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiRequest } from '../../services/api';
 import { useApiResource } from '../../services/useApiResource';
 
@@ -126,12 +127,17 @@ export default function Ocorrencias() {
   return (
     <main className="container-fluid py-4 px-3 px-md-4">
       {/* Cabeçalho da página */}
-      <header className="mb-4">
-        <h1 className="fw-bold mb-2">Ocorrências</h1>
-
-        <p className="text-secondary mb-0">
-          Acompanhe as ocorrências geradas a partir dos alertas escolares.
-        </p>
+      <header className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+        <div>
+          <h1 className="fw-bold mb-2">Ocorrências</h1>
+          <p className="text-secondary mb-0">
+            Acompanhe as ocorrências geradas a partir dos alertas escolares.
+          </p>
+        </div>
+        <Link to="/painel-escola" className="btn btn-outline-primary align-self-start align-self-sm-auto">
+          <i className="bi bi-arrow-left me-2" aria-hidden="true" />
+          Voltar ao painel
+        </Link>
       </header>
       {(error || mensagem) && <div className={`alert ${error || !mensagem.includes('registrado') ? 'alert-warning' : 'alert-success'}`} role="status">{error || mensagem}</div>}
 

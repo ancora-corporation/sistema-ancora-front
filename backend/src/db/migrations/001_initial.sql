@@ -1,145 +1,176 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE IF NOT EXISTS schools (
+CREATE TABLE IF NOT EXISTS ESCOLA (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  code TEXT NOT NULL UNIQUE,
-  district TEXT,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  nome_escola TEXT NOT NULL,
+  codigo_escola TEXT NOT NULL UNIQUE,
+  bairro_escola TEXT NOT NULL,
+  status_escola BOOLEAN NOT NULL DEFAULT TRUE,
+  registro TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizacao TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS USUARIO (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  school_id UUID REFERENCES schools(id) ON DELETE RESTRICT,
-  name TEXT NOT NULL,
+  escola_id UUID REFERENCES ESCOLA(id) ON DELETE RESTRICT,
+  nome_usuario TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  registry_number TEXT UNIQUE,
-  phone TEXT,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'director', 'social', 'teacher')),
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CHECK (role = 'admin' OR school_id IS NOT NULL)
+  numero_registro TEXT UNIQUE,
+  telefone TEXT,
+  senha_hash TEXT NOT NULL,
+  perfil TEXT NOT NULL
+    CHECK (perfil IN ('administrador', 'diretor', 'assistente_social', 'professor')),
+  status_usuario BOOLEAN NOT NULL DEFAULT TRUE,
+  registro TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizacao TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (perfil = 'administrador' OR escola_id IS NOT NULL)
 );
 
-CREATE TABLE IF NOT EXISTS classes (
+CREATE TABLE IF NOT EXISTS TURMA (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  school_id UUID NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
-  teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  name TEXT NOT NULL,
-  grade_level TEXT NOT NULL,
-  shift TEXT NOT NULL CHECK (shift IN ('morning', 'afternoon', 'evening')),
-  subject TEXT NOT NULL,
-  academic_year SMALLINT NOT NULL,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (school_id, name, academic_year)
+  escola_id UUID NOT NULL REFERENCES ESCOLA(id) ON DELETE RESTRICT,
+  nome_turma TEXT NOT NULL,
+  ano_serie TEXT NOT NULL,
+  turno TEXT NOT NULL
+    CHECK (turno IN ('manha', 'tarde', 'noite')),
+  ano_letivo SMALLINT NOT NULL,
+  status_turma BOOLEAN NOT NULL DEFAULT TRUE,
+  registro TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (escola_id, nome_turma, ano_letivo)
 );
 
-CREATE TABLE IF NOT EXISTS students (
+CREATE TABLE IF NOT EXISTS ALUNO (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  school_id UUID NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
-  enrollment TEXT NOT NULL UNIQUE,
-  name TEXT NOT NULL,
-  birth_date DATE,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  escola_id UUID NOT NULL REFERENCES ESCOLA(id) ON DELETE RESTRICT,
+  matricula BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE,
+  nome_aluno TEXT NOT NULL,
+  data_nascimento DATE,
+  status_aluno BOOLEAN NOT NULL DEFAULT TRUE,
+  registro TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizacao TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS class_students (
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  enrolled_at DATE NOT NULL DEFAULT CURRENT_DATE,
-  PRIMARY KEY (class_id, student_id)
+CREATE TABLE IF NOT EXISTS ALUNO_TURMA (
+  turma_id UUID NOT NULL REFERENCES TURMA(id) ON DELETE CASCADE,
+  aluno_id UUID NOT NULL REFERENCES ALUNO(id) ON DELETE CASCADE,
+  data_matricula DATE NOT NULL DEFAULT CURRENT_DATE,
+  PRIMARY KEY (turma_id, aluno_id)
 );
 
-CREATE TABLE IF NOT EXISTS attendance_sessions (
+CREATE TABLE IF NOT EXISTS TURMA_DISCIPLINA_PROFESSOR (
+  turma_id UUID NOT NULL REFERENCES TURMA(id) ON DELETE CASCADE,
+  disciplina TEXT NOT NULL,
+  professor_id UUID NOT NULL REFERENCES USUARIO(id) ON DELETE RESTRICT,
+  PRIMARY KEY (turma_id, disciplina, professor_id)
+);
+
+CREATE TABLE IF NOT EXISTS CHAMADA (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-  lesson_date DATE NOT NULL,
-  created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (class_id, lesson_date)
+  turma_id UUID NOT NULL REFERENCES TURMA(id) ON DELETE CASCADE,
+  data_aula DATE NOT NULL,
+  registrada_por UUID NOT NULL REFERENCES USUARIO(id) ON DELETE RESTRICT,
+  registro TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (turma_id, data_aula)
 );
 
-CREATE TABLE IF NOT EXISTS attendance_records (
-  session_id UUID NOT NULL REFERENCES attendance_sessions(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK (status IN ('present', 'absent', 'excused')),
-  note TEXT,
-  marked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (session_id, student_id)
+CREATE TABLE IF NOT EXISTS REGISTRO_CHAMADA (
+  chamada_id UUID NOT NULL REFERENCES CHAMADA(id) ON DELETE CASCADE,
+  aluno_id UUID NOT NULL REFERENCES ALUNO(id) ON DELETE CASCADE,
+  situacao TEXT NOT NULL
+    CHECK (situacao IN ('presente', 'ausente', 'falta_justificada')),
+  observacao TEXT,
+  marcado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (chamada_id, aluno_id)
 );
 
-CREATE TABLE IF NOT EXISTS grades (
+CREATE TABLE IF NOT EXISTS NOTA (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  subject TEXT NOT NULL,
-  assessment TEXT NOT NULL,
-  period TEXT NOT NULL,
-  value NUMERIC(4,2) NOT NULL CHECK (value >= 0 AND value <= 10),
-  created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (class_id, student_id, assessment, period)
+  turma_id UUID NOT NULL REFERENCES TURMA(id) ON DELETE CASCADE,
+  aluno_id UUID NOT NULL REFERENCES ALUNO(id) ON DELETE CASCADE,
+  disciplina TEXT NOT NULL,
+  avaliacao TEXT NOT NULL,
+  periodo TEXT NOT NULL,
+  valor NUMERIC(4,2) NOT NULL CHECK (valor >= 0 AND valor <= 10),
+  registrada_por UUID NOT NULL REFERENCES USUARIO(id) ON DELETE RESTRICT,
+  registro TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizacao TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (turma_id, aluno_id, disciplina, avaliacao, periodo)
 );
 
-CREATE TABLE IF NOT EXISTS alerts (
+CREATE TABLE IF NOT EXISTS EXECUCAO_MODELO (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  kind TEXT NOT NULL CHECK (kind IN ('attendance', 'grade', 'combined', 'manual')),
-  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'in_progress', 'resolved', 'overdue')),
-  risk_level TEXT NOT NULL CHECK (risk_level IN ('low', 'medium', 'high')),
-  risk_score NUMERIC(5,4) CHECK (risk_score >= 0 AND risk_score <= 1),
-  source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'ml')),
-  model_version TEXT,
-  summary TEXT NOT NULL,
-  due_at DATE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  nome_modelo TEXT NOT NULL,
+  versao_modelo TEXT,
+  situacao TEXT NOT NULL
+    CHECK (situacao IN ('na_fila', 'em_execucao', 'concluida', 'falhou')),
+  iniciada_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finalizada_em TIMESTAMPTZ,
+  resumo_entrada JSONB NOT NULL DEFAULT '{}'::jsonb,
+  resumo_saida JSONB NOT NULL DEFAULT '{}'::jsonb,
+  mensagem_erro TEXT
 );
 
-CREATE TABLE IF NOT EXISTS interventions (
+CREATE TABLE IF NOT EXISTS ALERTA (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  alert_id UUID REFERENCES alerts(id) ON DELETE SET NULL,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  occurred_at DATE NOT NULL DEFAULT CURRENT_DATE,
-  kind TEXT NOT NULL,
-  description TEXT NOT NULL,
-  outcome TEXT,
-  follow_up_at DATE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  aluno_id UUID NOT NULL REFERENCES ALUNO(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL
+    CHECK (tipo IN ('frequencia', 'nota', 'combinado', 'manual')),
+  situacao TEXT NOT NULL DEFAULT 'novo'
+    CHECK (situacao IN ('novo', 'em_acompanhamento', 'resolvido', 'atrasado')),
+  nivel_risco TEXT NOT NULL
+    CHECK (nivel_risco IN ('baixo', 'medio', 'alto')),
+  pontuacao_risco NUMERIC(5,4)
+    CHECK (pontuacao_risco >= 0 AND pontuacao_risco <= 1),
+  origem TEXT NOT NULL DEFAULT 'manual'
+    CHECK (origem IN ('manual', 'modelo_ml')),
+  versao_modelo TEXT,
+  resumo TEXT NOT NULL,
+  prazo DATE,
+  execucao_modelo_id UUID
+    REFERENCES EXECUCAO_MODELO(id) ON DELETE SET NULL,
+  registro TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizacao TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS model_runs (
+CREATE TABLE IF NOT EXISTS INTERVENCAO (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  model_name TEXT NOT NULL,
-  model_version TEXT,
-  status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed')),
-  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  finished_at TIMESTAMPTZ,
-  input_summary JSONB NOT NULL DEFAULT '{}'::jsonb,
-  output_summary JSONB NOT NULL DEFAULT '{}'::jsonb,
-  error_message TEXT
+  alerta_id UUID REFERENCES ALERTA(id) ON DELETE SET NULL,
+  aluno_id UUID NOT NULL REFERENCES ALUNO(id) ON DELETE CASCADE,
+  registrada_por UUID NOT NULL REFERENCES USUARIO(id) ON DELETE RESTRICT,
+  data_ocorrencia DATE NOT NULL DEFAULT CURRENT_DATE,
+  tipo TEXT NOT NULL,
+  descricao TEXT NOT NULL,
+  resultado TEXT,
+  data_retorno DATE,
+  registro TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-ALTER TABLE alerts ADD COLUMN IF NOT EXISTS model_run_id UUID REFERENCES model_runs(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS indice_aluno_escola_status
+  ON ALUNO (escola_id, status_aluno);
 
-CREATE INDEX IF NOT EXISTS idx_students_school_active ON students (school_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_classes_teacher_active ON classes (teacher_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_attendance_date_class ON attendance_sessions (lesson_date DESC, class_id);
-CREATE INDEX IF NOT EXISTS idx_alerts_status_created ON alerts (status, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_alerts_student ON alerts (student_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_alerts_model_run ON alerts (model_run_id) WHERE model_run_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_interventions_student ON interventions (student_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS indice_turma_status
+  ON TURMA (status_turma);
 
-CREATE TABLE IF NOT EXISTS schema_migrations (
-  version TEXT PRIMARY KEY,
-  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE INDEX IF NOT EXISTS indice_turma_professor
+  ON TURMA_DISCIPLINA_PROFESSOR (professor_id, turma_id);
+
+CREATE INDEX IF NOT EXISTS indice_chamada_data_turma
+  ON CHAMADA (data_aula DESC, turma_id);
+
+CREATE INDEX IF NOT EXISTS indice_alerta_situacao_registro
+  ON ALERTA (situacao, registro DESC);
+
+CREATE INDEX IF NOT EXISTS indice_alerta_aluno
+  ON ALERTA (aluno_id, registro DESC);
+
+CREATE INDEX IF NOT EXISTS indice_alerta_execucao_modelo
+  ON ALERTA (execucao_modelo_id)
+  WHERE execucao_modelo_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS indice_intervencao_aluno
+  ON INTERVENCAO (aluno_id, registro DESC);
+
+CREATE TABLE IF NOT EXISTS MIGRACAO_ESQUEMA (
+  versao TEXT PRIMARY KEY,
+  aplicada_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -13,12 +13,12 @@ API REST em Node.js e Express 5, com PostgreSQL, autenticação JWT, validação
 Copy-Item .env.example .env
 # Gere um JWT_SECRET aleatório com pelo menos 32 caracteres e grave em .env
 docker compose up -d db
-npm install
-npm run db:setup
-npm run dev
+docker compose build api
+docker compose run --rm api npm run db:setup
+docker compose up -d api
 ```
 
-A API responde em `http://localhost:3001`; verificação de conexão: `GET /health`. No front, configure `VITE_API_URL=http://localhost:3001/api/v1` em `.env.local` e execute `npm run dev` na raiz do front.
+A API responde em `http://localhost:3001`; verificação de conexão: `GET /health`. O serviço da API usa o endereço interno `db` para acessar o PostgreSQL no Compose. No front, configure `VITE_API_URL=http://localhost:3001/api/v1` em `.env.local` e execute `npm run dev` na raiz do front. Para ver os logs da API, use `docker compose logs -f api`; para pará-la, use `docker compose stop api`.
 
 ## Perfis e acesso
 
@@ -33,19 +33,19 @@ Todas as rotas de negócio exigem `Authorization: Bearer <token>`. O servidor re
 
 ## Rotas principais
 
-- `POST /api/v1/auth/login`, `GET /api/v1/auth/me`
+- `POST /api/v1/auth/login`, `GET/PATCH /api/v1/auth/me`
 - `GET /api/v1/schools`, `GET/POST /api/v1/users`, `PATCH /api/v1/users/:id/status`
-- `GET /api/v1/classes`, `GET /api/v1/classes/:id/alunos`
+- `GET/POST /api/v1/classes`, `GET /api/v1/classes/:id/alunos`, `POST /api/v1/classes/:id/lotacoes`
 - `GET/POST /api/v1/students`, `GET /api/v1/students/:id`
 - `GET /api/v1/attendance`, `PUT /api/v1/attendance`
-- `GET /api/v1/grades`, `PUT /api/v1/grades`
+- `GET /api/v1/grades`, `PUT/DELETE /api/v1/grades`
 - `GET /api/v1/alerts`, `PATCH /api/v1/alerts/:id/status`
 - `GET/POST /api/v1/interventions`
 - `GET/POST /api/v1/ml/runs`
 
 ## PostgreSQL e dados demonstrativos
 
-As migrações versionadas ficam em `src/db/migrations`. Para aplicar mudanças, acrescente uma nova migração numerada e registre sua execução no script `src/db/migrate.js`. `npm run db:seed` só funciona com `SEED_DEMO=true` e fora de produção. As contas demonstrativas compartilham a senha `123456`; use somente localmente e nunca reutilize em produção.
+As migrações versionadas ficam em `src/db/migrations`. O cadastro comum fica em `USUARIO`; `ADMINISTRADOR`, `DIRETOR`, `PROFESSOR` e `ASSISTENTE_SOCIAL` guardam os perfis e vínculos específicos. `DISCIPLINA` cataloga disciplinas e `LOTACAO` relaciona professor, turma, disciplina e ano letivo. Chamada e nota apontam para a lotação. A migração `003_perfis_e_lotacoes.sql` transfere os vínculos existentes antes de remover os campos e a tabela antigos. No SQL do projeto, tabelas e colunas são escritas em português e maiúsculo sem aspas. O PostgreSQL normaliza identificadores sem aspas para minúsculas internamente. O histórico fica em `MIGRACAO_ESQUEMA`. Para aplicar mudanças, acrescente uma migração numerada em `src/db/migrations`; o script `src/db/migrate.js` aplica os arquivos em ordem. `npm run db:seed` só funciona com `SEED_DEMO=true` e fora de produção. As contas demonstrativas compartilham a senha `123456`; use somente localmente e nunca reutilize em produção.
 
 ## Integração do modelo de ML
 
@@ -60,7 +60,7 @@ Configure `ML_SERVICE_URL` e opcionalmente `ML_SERVICE_TOKEN` quando o serviço 
 }
 ```
 
-Versões, estado da execução e previsões ficam registrados em `model_runs` e `alerts`. Sem `ML_SERVICE_URL`, a rota informa que o modelo ainda não está configurado e não fabrica previsões.
+Versões, estado da execução e previsões ficam registrados em `EXECUCAO_MODELO` e `ALERTA`. Sem `ML_SERVICE_URL`, a rota informa que o modelo ainda não está configurado e não fabrica previsões. A API mantém nomes em inglês no contrato HTTP para compatibilidade com o front-end e converte esses valores para o esquema físico em português.
 
 ## Limites do protótipo
 

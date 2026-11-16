@@ -14,5 +14,24 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  api:
+    build: .
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://ancora:ancora_dev@db:5432/ancora
+    command: npm run dev
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 volumes:
   ancora_pgdata:

@@ -1,9 +1,18 @@
 
 import { useState } from "react";
+import { Link } from 'react-router-dom';
+import { Auth } from '../../services/auth';
+import { apiRequest } from '../../services/api';
 import { useApiResource } from '../../services/useApiResource';
 
 function Alunos() {
-  const { data: registros, loading, error } = useApiResource('/students', 'alunos');
+  const usuario = Auth.usuarioAtual();
+  const caminhoPainel = usuario?.nivel === 2 ? '/painel-escola' : '/painel-alunos';
+  const { data: registros, loading, error, refresh } = useApiResource('/students', 'alunos');
+  const [cadastroAberto, setCadastroAberto] = useState(false);
+  const [novoAluno, setNovoAluno] = useState({ name: '', birthDate: '' });
+  const [erroCadastro, setErroCadastro] = useState('');
+  const [mensagemCadastro, setMensagemCadastro] = useState('');
   // Dados fictícios para visualizar a tabela durante o protótipo.
   // Eles deverão ser substituídos pelos dados reais quando houver integração.
   const alunosDemo = [
@@ -57,13 +66,31 @@ function Alunos() {
   const alunosApi = registros.map((aluno) => ({
     id: aluno.id,
     nome: aluno.name,
-    matricula: aluno.enrollment,
+    matricula: String(aluno.enrollment ?? ''),
     ano: aluno.grade_levels,
     turma: aluno.class_names,
     turno: (aluno.shifts || '').split(', ').map((turno) => ({ morning: 'Manhã', afternoon: 'Tarde', evening: 'Noite' })[turno] || turno).join(', '),
     alerta: ({ high: 'Alto', medium: 'Médio', low: 'Baixo' })[aluno.latest_risk_level] || 'Não definido',
   }));
   const alunosExemplo = error ? alunosDemo : alunosApi;
+
+  async function cadastrarAluno(event) {
+    event.preventDefault();
+    setErroCadastro('');
+    setMensagemCadastro('');
+    try {
+      await apiRequest('/students', {
+        method: 'POST',
+        body: JSON.stringify({ name: novoAluno.name.trim(), birthDate: novoAluno.birthDate || undefined }),
+      });
+      setNovoAluno({ name: '', birthDate: '' });
+      setCadastroAberto(false);
+      setMensagemCadastro('Aluno cadastrado com sucesso. A matrícula foi gerada automaticamente.');
+      await refresh();
+    } catch (requestError) {
+      setErroCadastro(requestError.message);
+    }
+  }
 
   // Estados que guardam os valores digitados e selecionados.
   const [pesquisa, setPesquisa] = useState("");
@@ -78,7 +105,7 @@ function Alunos() {
 
     const correspondePesquisa =
       aluno.nome.toLowerCase().includes(termo) ||
-      aluno.matricula.toLowerCase().includes(termo);
+      String(aluno.matricula).toLowerCase().includes(termo);
 
     const correspondeAno =
       anoSelecionado === "" || aluno.ano === anoSelecionado;
@@ -113,12 +140,48 @@ function Alunos() {
   return (
     <main className="container py-4">
       {/* Cabeçalho da página */}
-      <header className="mb-4">
-        <h1 className="fw-bold mb-2">Alunos</h1>
-        <p className="text-secondary mb-0">
-          Consulte e localize os alunos da escola.
-        </p>
+      <header className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 flex-grow-1">
+          <div>
+            <h1 className="fw-bold mb-2">Alunos</h1>
+            <p className="text-secondary mb-0">Consulte e localize os alunos da escola.</p>
+          </div>
+          {usuario?.nivel === 2 && (
+            <button type="button" className="btn btn-primary" aria-expanded={cadastroAberto} onClick={() => { setCadastroAberto((aberto) => !aberto); setErroCadastro(''); }}>
+              <i className={`bi ${cadastroAberto ? 'bi-x-lg' : 'bi-person-plus'} me-2`} aria-hidden="true" />
+              {cadastroAberto ? 'Cancelar' : 'Cadastrar aluno'}
+            </button>
+          )}
+        </div>
+        {(usuario?.nivel === 1 || usuario?.nivel === 2) && (
+          <Link to={caminhoPainel} className="btn btn-outline-primary align-self-start align-self-md-auto">
+            <i className="bi bi-arrow-left me-2" aria-hidden="true" />Voltar ao painel
+          </Link>
+        )}
       </header>
+      {erroCadastro && <div className="alert alert-danger" role="alert">{erroCadastro}</div>}
+      {mensagemCadastro && <div className="alert alert-success" role="status">{mensagemCadastro}</div>}
+      {cadastroAberto && usuario?.nivel === 2 && (
+        <section className="card border-0 shadow-sm mb-4" aria-labelledby="titulo-novo-aluno">
+          <form className="card-body" onSubmit={cadastrarAluno}>
+            <h2 id="titulo-novo-aluno" className="h5 fw-bold mb-3">Cadastrar aluno na escola</h2>
+            <div className="row g-3 align-items-end">
+              <div className="col-12 col-md-7">
+                <label htmlFor="nome-novo-aluno" className="form-label">Nome do aluno</label>
+                <input id="nome-novo-aluno" className="form-control" value={novoAluno.name} onChange={(event) => setNovoAluno({ ...novoAluno, name: event.target.value })} minLength={2} maxLength={160} required />
+              </div>
+              <div className="col-12 col-md-3">
+                <label htmlFor="nascimento-novo-aluno" className="form-label">Data de nascimento</label>
+                <input id="nascimento-novo-aluno" type="date" className="form-control" value={novoAluno.birthDate} onChange={(event) => setNovoAluno({ ...novoAluno, birthDate: event.target.value })} />
+              </div>
+              <div className="col-12 col-md-2 d-grid">
+                <button type="submit" className="btn btn-primary">Salvar aluno</button>
+              </div>
+            </div>
+            <p className="form-text mb-0 mt-2">A matrícula será atribuída automaticamente pelo sistema.</p>
+          </form>
+        </section>
+      )}
       {error && <div className="alert alert-warning">A API não respondeu. A lista abaixo é demonstrativa e não contém dados do banco. {error}</div>}
       {loading && <p className="text-secondary">Carregando alunos...</p>}
 

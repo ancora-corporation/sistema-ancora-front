@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Auth } from '../services/auth';
 import logo from '../assets/logo_sistema_ancora.svg';
+import MinhaConta from './MinhaConta';
 
 const links = [
     { to: '/admin', rotulo: 'Painel', exato: true },
@@ -39,6 +40,7 @@ export default function AdminLayout() {
 
           <div className="d-flex align-items-center gap-2">
             <span className="small">{usuario?.nome}</span>
+            <MinhaConta />
             <button className="btn btn-outline-primary btn-sm" onClick={sair}>
               Sair
             </button>
