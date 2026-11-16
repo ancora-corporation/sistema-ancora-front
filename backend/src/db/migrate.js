@@ -1,23 +1,28 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { pool } from './pool.js';
 
-const version = '001_initial';
 try {
-  const { rows } = await pool.query('SELECT to_regclass($1) AS table_name', ['public.schema_migrations']);
-  let alreadyApplied = false;
-  if (rows[0].table_name) {
-    const applied = await pool.query('SELECT 1 FROM schema_migrations WHERE version = $1', [version]);
-    alreadyApplied = Boolean(applied.rowCount);
-  }
-  if (alreadyApplied) {
-    console.log(`Migração ${version} já aplicada.`);
-  } else {
-    const sql = await readFile(new URL('./migrations/001_initial.sql', import.meta.url), 'utf8');
+  await pool.query(
+    'CREATE TABLE IF NOT EXISTS MIGRACAO_ESQUEMA (versao TEXT PRIMARY KEY, aplicada_em TIMESTAMPTZ NOT NULL DEFAULT NOW())',
+  );
+  const files = (await readdir(new URL('./migrations/', import.meta.url)))
+    .filter((file) => /^\d+_[a-z0-9_]+\.sql$/i.test(file))
+    .sort();
+
+  for (const file of files) {
+    const version = file.replace(/\.sql$/i, '');
+    const { rowCount } = await pool.query('SELECT 1 FROM MIGRACAO_ESQUEMA WHERE versao = $1', [version]);
+    if (rowCount) {
+      console.log(`Migração ${version} já aplicada.`);
+      continue;
+    }
+
+    const sql = await readFile(new URL(`./migrations/${file}`, import.meta.url), 'utf8');
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(sql);
-      await client.query('INSERT INTO schema_migrations (version) VALUES ($1) ON CONFLICT DO NOTHING', [version]);
+      await client.query('INSERT INTO MIGRACAO_ESQUEMA (versao) VALUES ($1) ON CONFLICT DO NOTHING', [version]);
       await client.query('COMMIT');
       console.log(`Migração ${version} aplicada.`);
     } catch (error) {

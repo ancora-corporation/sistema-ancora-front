@@ -9,97 +9,120 @@ if (env.SEED_DEMO !== 'true' || env.NODE_ENV === 'production') {
 
 const schoolCode = 'EM-001';
 const demoUsers = [
-  ['Administrador Exemplo', 'admin@ancora.com', 'admin', null],
-  ['Diretor Exemplo', 'diretor@ancora.com', 'director', schoolCode],
-  ['Assistente Social Exemplo', 'social@ancora.com', 'social', schoolCode],
-  ['Professora Exemplo', 'professor@ancora.com', 'teacher', schoolCode],
+  ['Administrador Exemplo', 'admin@ancora.com', 'administrador'],
+  ['Diretor Exemplo', 'diretor@ancora.com', 'diretor'],
+  ['Assistente Social Exemplo', 'social@ancora.com', 'assistente_social'],
+  ['Professora Exemplo', 'professor@ancora.com', 'professor'],
 ];
 
 try {
   const passwordHash = await bcrypt.hash('123456', 12);
   const { rows: [school] } = await pool.query(
-    `INSERT INTO schools (name, code, district)
+    `INSERT INTO ESCOLA (nome_escola, codigo_escola, bairro_escola)
      VALUES ('Escola Municipal Exemplo A', $1, 'Bairro Centro')
-     ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name
+     ON CONFLICT (codigo_escola) DO UPDATE SET nome_escola = EXCLUDED.nome_escola
      RETURNING id`, [schoolCode],
   );
   const users = {};
-  for (const [name, email, role, code] of demoUsers) {
+  for (const [name, email, role] of demoUsers) {
     const { rows: [user] } = await pool.query(
-      `INSERT INTO users (name, email, role, school_id, password_hash)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role,
-         school_id = EXCLUDED.school_id, password_hash = EXCLUDED.password_hash, is_active = TRUE
-       RETURNING id`, [name, email, role, code ? school.id : null, passwordHash],
+      `INSERT INTO USUARIO (nome_usuario, email, senha_hash)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (email) DO UPDATE SET nome_usuario = EXCLUDED.nome_usuario,
+         senha_hash = EXCLUDED.senha_hash, status_usuario = TRUE
+       RETURNING id`, [name, email, passwordHash],
     );
     users[email] = user.id;
+    if (role === 'administrador') await pool.query('INSERT INTO ADMINISTRADOR (id_usuario) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);
+    if (role === 'diretor') await pool.query('INSERT INTO DIRETOR (id_usuario, id_escola) VALUES ($1, $2) ON CONFLICT (id_usuario) DO UPDATE SET id_escola = EXCLUDED.id_escola', [user.id, school.id]);
+    if (role === 'professor') await pool.query('INSERT INTO PROFESSOR (id_usuario, id_escola) VALUES ($1, $2) ON CONFLICT (id_usuario) DO UPDATE SET id_escola = EXCLUDED.id_escola', [user.id, school.id]);
+    if (role === 'assistente_social') await pool.query('INSERT INTO ASSISTENTE_SOCIAL (id_usuario, id_escola) VALUES ($1, $2) ON CONFLICT (id_usuario) DO UPDATE SET id_escola = EXCLUDED.id_escola', [user.id, school.id]);
   }
+  await pool.query(
+    'UPDATE ESCOLA SET diretor_responsavel_id = $2 WHERE id = $1',
+    [school.id, users['diretor@ancora.com']],
+  );
 
-  const classRows = [];
-  for (const definition of [
-    ['6º ano A', '6º ano', 'morning', 'Matemática'],
-    ['7º ano B', '7º ano', 'afternoon', 'Matemática'],
+  const classes = [];
+  for (const [name, grade, shift, subject] of [
+    ['6º ano A', '6º ano', 'manha', 'Matemática'],
+    ['7º ano B', '7º ano', 'tarde', 'Matemática'],
   ]) {
     const { rows: [classRow] } = await pool.query(
-      `INSERT INTO classes (school_id, teacher_id, name, grade_level, shift, subject, academic_year)
-       VALUES ($1, $2, $3, $4, $5, $6, EXTRACT(YEAR FROM CURRENT_DATE)::smallint)
-       ON CONFLICT (school_id, name, academic_year) DO UPDATE SET teacher_id = EXCLUDED.teacher_id
-       RETURNING id`, [school.id, users['professor@ancora.com'], ...definition],
+      `INSERT INTO TURMA (escola_id, nome_turma, ano_serie, turno, ano_letivo)
+       VALUES ($1, $2, $3, $4, EXTRACT(YEAR FROM CURRENT_DATE)::smallint)
+       ON CONFLICT (escola_id, nome_turma, ano_letivo) DO UPDATE SET status_turma = TRUE
+       RETURNING id`, [school.id, name, grade, shift],
     );
-    classRows.push(classRow.id);
+    await pool.query(
+      `INSERT INTO DISCIPLINA (nome) VALUES ($1) ON CONFLICT (nome) DO UPDATE SET ativa = TRUE RETURNING id`, [subject],
+    );
+    const { rows: [disciplina] } = await pool.query('SELECT id FROM DISCIPLINA WHERE nome = $1', [subject]);
+    await pool.query(
+      `INSERT INTO LOTACAO (id_professor, id_turma, id_disciplina, ano_letivo)
+       VALUES ($1, $2, $3, EXTRACT(YEAR FROM CURRENT_DATE)::smallint) ON CONFLICT DO NOTHING`,
+      [users['professor@ancora.com'], classRow.id, disciplina.id],
+    );
+    classes.push(classRow.id);
   }
 
-  const students = [
-    ['A-0601', 'Ana Exemplo', classRows[0]], ['A-0602', 'Bruno Exemplo', classRows[0]],
-    ['A-0603', 'Camila Exemplo', classRows[0]], ['A-0604', 'Daniel Exemplo', classRows[0]],
-    ['A-0605', 'Eduarda Exemplo', classRows[0]], ['B-0701', 'Felipe Exemplo', classRows[1]],
-    ['B-0702', 'Gabriela Exemplo', classRows[1]], ['B-0703', 'Heitor Exemplo', classRows[1]],
-    ['B-0704', 'Isabela Exemplo', classRows[1]],
+  const demoStudents = [
+    ['Ana Exemplo', classes[0]], ['Bruno Exemplo', classes[0]],
+    ['Camila Exemplo', classes[0]], ['Daniel Exemplo', classes[0]],
+    ['Eduarda Exemplo', classes[0]], ['Felipe Exemplo', classes[1]],
+    ['Gabriela Exemplo', classes[1]], ['Heitor Exemplo', classes[1]],
+    ['Isabela Exemplo', classes[1]],
   ];
-  const seededStudents = [];
-  for (const [enrollment, name, classId] of students) {
-    const { rows: [student] } = await pool.query(
-      `INSERT INTO students (school_id, enrollment, name) VALUES ($1, $2, $3)
-       ON CONFLICT (enrollment) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-      [school.id, enrollment, name],
+  const students = [];
+  for (const [name, classId] of demoStudents) {
+    let { rows: [student] } = await pool.query(
+      'SELECT id, matricula FROM ALUNO WHERE escola_id = $1 AND nome_aluno = $2 LIMIT 1', [school.id, name],
     );
-    await pool.query('INSERT INTO class_students (class_id, student_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [classId, student.id]);
-    seededStudents.push({ enrollment, id: student.id, classId });
+    if (!student) {
+      ({ rows: [student] } = await pool.query(
+        'INSERT INTO ALUNO (escola_id, nome_aluno) VALUES ($1, $2) RETURNING id, matricula', [school.id, name],
+      ));
+    }
+    await pool.query('INSERT INTO ALUNO_TURMA (turma_id, aluno_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [classId, student.id]);
+    students.push({ name, id: student.id, classId });
   }
 
   const { rows: [session] } = await pool.query(
-    `INSERT INTO attendance_sessions (class_id, lesson_date, created_by) VALUES ($1, CURRENT_DATE, $2)
-     ON CONFLICT (class_id, lesson_date) DO UPDATE SET created_by = EXCLUDED.created_by RETURNING id`,
-    [classRows[0], users['professor@ancora.com']],
+    `INSERT INTO CHAMADA (turma_id, id_lotacao, data_aula, registrada_por)
+     SELECT $1, id, CURRENT_DATE, $2 FROM LOTACAO WHERE id_turma = $1 AND id_professor = $2
+     ORDER BY id LIMIT 1 ON CONFLICT (id_lotacao, data_aula) WHERE id_lotacao IS NOT NULL
+     DO UPDATE SET registrada_por = EXCLUDED.registrada_por RETURNING id`,
+    [classes[0], users['professor@ancora.com']],
   );
-  for (const [index, student] of seededStudents.filter((item) => item.classId === classRows[0]).entries()) {
+  for (const [index, student] of students.filter((item) => item.classId === classes[0]).entries()) {
     await pool.query(
-      `INSERT INTO attendance_records (session_id, student_id, status, note) VALUES ($1, $2, $3, $4)
-       ON CONFLICT (session_id, student_id) DO UPDATE SET status = EXCLUDED.status, note = EXCLUDED.note`,
-      [session.id, student.id, index === 3 ? 'absent' : 'present', index === 3 ? 'Ausência demonstrativa' : null],
+      `INSERT INTO REGISTRO_CHAMADA (chamada_id, aluno_id, situacao, observacao) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (chamada_id, aluno_id) DO UPDATE SET situacao = EXCLUDED.situacao, observacao = EXCLUDED.observacao`,
+      [session.id, student.id, index === 3 ? 'ausente' : 'presente', index === 3 ? 'Ausência demonstrativa' : null],
     );
   }
 
-  const ana = seededStudents.find((student) => student.enrollment === 'A-0601');
+  const ana = students.find((student) => student.name === 'Ana Exemplo');
   await pool.query(
-    `INSERT INTO grades (class_id, student_id, subject, assessment, period, value, created_by)
-     VALUES ($1, $2, 'Matemática', 'Avaliação inicial', EXTRACT(YEAR FROM CURRENT_DATE)::text, 8.5, $3)
-     ON CONFLICT (class_id, student_id, assessment, period) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
-    [classRows[0], ana.id, users['professor@ancora.com']],
+    `INSERT INTO NOTA (turma_id, aluno_id, id_lotacao, disciplina, avaliacao, periodo, valor, registrada_por)
+     SELECT $1, $2, l.id, d.nome, 'Avaliação inicial', EXTRACT(YEAR FROM CURRENT_DATE)::text, 8.5, $3
+     FROM LOTACAO l JOIN DISCIPLINA d ON d.id = l.id_disciplina WHERE l.id_turma = $1 AND l.id_professor = $3 AND d.nome = 'Matemática'
+     ON CONFLICT (turma_id, aluno_id, disciplina, avaliacao, periodo) DO UPDATE SET id_lotacao = EXCLUDED.id_lotacao, valor = EXCLUDED.valor, atualizacao = NOW()`,
+    [classes[0], ana.id, users['professor@ancora.com']],
   );
 
-  for (const [enrollment, status, level, score, summary, dueOffset] of [
-    ['A-0604', 'new', 'high', 0.82, 'Ausências frequentes registradas nesta turma.', 5],
-    ['B-0702', 'overdue', 'medium', 0.61, 'Acompanhamento de frequência requer retorno da escola.', -2],
+  for (const [studentName, status, level, score, summary, dueOffset] of [
+    ['Daniel Exemplo', 'novo', 'alto', 0.82, 'Ausências frequentes registradas nesta turma.', 5],
+    ['Gabriela Exemplo', 'atrasado', 'medio', 0.61, 'Acompanhamento de frequência requer retorno da escola.', -2],
   ]) {
-    const student = seededStudents.find((item) => item.enrollment === enrollment);
+    const student = students.find((item) => item.name === studentName);
     const { rowCount } = await pool.query(
-      `SELECT 1 FROM alerts WHERE student_id = $1 AND source = 'manual' AND summary = $2`, [student.id, summary],
+      'SELECT 1 FROM ALERTA WHERE aluno_id = $1 AND origem = \'manual\' AND resumo = $2', [student.id, summary],
     );
     if (!rowCount) {
       await pool.query(
-        `INSERT INTO alerts (student_id, kind, status, risk_level, risk_score, source, summary, due_at)
-         VALUES ($1, 'attendance', $2, $3, $4, 'manual', $5, CURRENT_DATE + $6::int)`,
+        `INSERT INTO ALERTA (aluno_id, tipo, situacao, nivel_risco, pontuacao_risco, origem, resumo, prazo)
+         VALUES ($1, 'frequencia', $2, $3, $4, 'manual', $5, CURRENT_DATE + $6::int)`,
         [student.id, status, level, score, summary, dueOffset],
       );
     }

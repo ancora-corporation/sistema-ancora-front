@@ -9,9 +9,15 @@ router.use(authenticate);
 
 router.get('/', allowRoles('admin', 'director', 'social'), async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT i.id, i.student_id, st.name AS student_name, i.alert_id, i.kind, i.description, i.outcome, i.occurred_at, i.follow_up_at, i.created_at, u.name AS created_by_name
-     FROM interventions i JOIN students st ON st.id = i.student_id JOIN users u ON u.id = i.created_by
-     WHERE ($1 = 'admin' OR st.school_id = $2) ORDER BY i.created_at DESC LIMIT 500`, [req.user.role, req.user.schoolId],
+    `SELECT i.id, i.aluno_id AS student_id, a.nome_aluno AS student_name,
+       i.alerta_id AS alert_id, i.tipo AS kind, i.descricao AS description,
+       i.resultado AS outcome, i.data_ocorrencia AS occurred_at,
+       i.data_retorno AS follow_up_at, i.registro AS created_at,
+       u.nome_usuario AS created_by_name
+     FROM INTERVENCAO i JOIN ALUNO a ON a.id = i.aluno_id
+     JOIN USUARIO u ON u.id = i.registrada_por
+     WHERE ($1 = 'admin' OR a.escola_id = $2)
+     ORDER BY i.registro DESC LIMIT 500`, [req.user.role, req.user.schoolId],
   );
   res.json({ intervencoes: rows });
 });
@@ -20,12 +26,14 @@ const createSchema = z.object({ body: z.object({ studentId: z.uuid(), alertId: z
 router.post('/', allowRoles('social', 'director'), validate(createSchema), async (req, res) => {
   const item = req.validated.body;
   const { rows: [created] } = await pool.query(
-    `INSERT INTO interventions (student_id, alert_id, created_by, kind, description, occurred_at, outcome, follow_up_at)
-     SELECT st.id, a.id, $3, $4, $5, $6, $7, $8 FROM students st
-     LEFT JOIN alerts a ON a.id = $2 AND a.student_id = st.id
-     WHERE st.id = $1 AND st.school_id = $9 AND st.is_active
-       AND ($2::uuid IS NULL OR a.id IS NOT NULL)
-     RETURNING id, student_id, alert_id, kind, description, occurred_at, outcome, follow_up_at, created_at`,
+    `INSERT INTO INTERVENCAO (aluno_id, alerta_id, registrada_por, tipo, descricao, data_ocorrencia, resultado, data_retorno)
+     SELECT a.id, al.id, $3, $4, $5, $6, $7, $8 FROM ALUNO a
+     LEFT JOIN ALERTA al ON al.id = $2 AND al.aluno_id = a.id
+     WHERE a.id = $1 AND a.escola_id = $9 AND a.status_aluno
+       AND ($2::uuid IS NULL OR al.id IS NOT NULL)
+     RETURNING id, aluno_id AS student_id, alerta_id AS alert_id, tipo AS kind,
+       descricao AS description, data_ocorrencia AS occurred_at, resultado AS outcome,
+       data_retorno AS follow_up_at, registro AS created_at`,
     [item.studentId, item.alertId || null, req.user.id, item.kind, item.description, item.occurredAt || new Date().toISOString().slice(0, 10), item.outcome || null, item.followUpAt || null, req.user.schoolId],
   );
   if (!created) return res.status(404).json({ error: 'Aluno ou alerta não encontrado nesta escola.' });

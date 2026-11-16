@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Auth } from '../../services/auth';
 import iconeAncora from '../../assets/icone-sistema.png';
 import { useApiResource } from '../../services/useApiResource';
+import MinhaConta from '../../components/MinhaConta';
 
 /*
  * Arquivo: painelalunos.jsx
@@ -74,6 +75,7 @@ export default function PainelAlunos() {
         </div>
 
         <div className="d-flex gap-2">
+          <MinhaConta />
           <Link to="/alunos" className="btn btn-primary rounded-pill px-4 fw-bold">
             Alunos
           </Link>
