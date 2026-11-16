@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Auth } from '../../services/auth';
 import iconeAncora from '../../assets/icone-sistema.png';
+import { apiRequest } from '../../services/api';
+import { useApiResource } from '../../services/useApiResource';
 
 /*
  * Arquivo: IntervencoesS.jsx
@@ -14,6 +16,7 @@ import iconeAncora from '../../assets/icone-sistema.png';
  */
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
+const PRAZO_SEM_DATA = new Date(Date.now() + 7 * MS_POR_DIA);
 
 function dataEmDias(dias) {
   return new Date(Date.now() + dias * MS_POR_DIA);
@@ -128,12 +131,27 @@ function formularioVazio() {
 
 export default function Intervencoes() {
   const navigate = useNavigate();
-
-  const [ocorrencias, setOcorrencias] = useState(ocorrenciasIniciais);
+  const { data: alertasApi, loading: carregandoApi, error: erroApi, refresh } = useApiResource('/alerts', 'alertas');
+  const [ocorrenciasLocais, setOcorrenciasLocais] = useState(ocorrenciasIniciais);
   const [aba, setAba] = useState('Pendentes');
   const [selecionadaId, setSelecionadaId] = useState(null);
   const [formulario, setFormulario] = useState(formularioVazio());
   const [validado, setValidado] = useState(false);
+  const [mensagem, setMensagem] = useState('');
+
+  const apiPronta = !carregandoApi && !erroApi;
+  const ocorrenciasDaApi = alertasApi.map((alerta) => ({
+    id: alerta.id,
+    alunoId: alerta.student_id,
+    aluno: alerta.student_name,
+    turma: alerta.class_name || '—',
+    tipo: ({ attendance: 'Frequência', grade: 'Notas', combined: 'Combinado', manual: 'Manual' })[alerta.kind],
+    descricao: alerta.summary,
+    prazo: alerta.due_at ? new Date(`${alerta.due_at}T00:00:00`) : PRAZO_SEM_DATA,
+    status: alerta.status === 'resolved' ? 'Encerrada' : 'Pendente',
+    relatorio: alerta.intervention_description ? { acao: alerta.intervention_kind, data: alerta.intervention_occurred_at?.slice(0, 10) || '', relato: alerta.intervention_description } : null,
+  }));
+  const ocorrencias = apiPronta ? ocorrenciasDaApi : ocorrenciasLocais;
 
   const selecionada = ocorrencias.find((o) => o.id === selecionadaId) ?? null;
   const encerradaSelecionada = selecionada?.status === 'Encerrada';
@@ -165,8 +183,7 @@ export default function Intervencoes() {
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
   }
 
-  // Guarda o relatório na ocorrência. Com a API, ele será atrelado ao perfil do aluno.
-  function salvarRelatorio(evento) {
+  async function salvarRelatorio(evento) {
     evento.preventDefault();
 
     if (!evento.currentTarget.checkValidity()) {
@@ -174,24 +191,34 @@ export default function Intervencoes() {
       return;
     }
 
-    setOcorrencias((atuais) =>
-      atuais.map((o) =>
-        o.id === selecionadaId ? { ...o, relatorio: { ...formulario } } : o
-      )
-    );
-    setValidado(false);
+    if (!apiPronta) {
+      setOcorrenciasLocais((atuais) => atuais.map((item) => item.id === selecionadaId ? { ...item, relatorio: { ...formulario } } : item));
+      setValidado(false);
+      setMensagem('Relatório salvo apenas nesta demonstração local.');
+      return;
+    }
+    try {
+      await apiRequest('/interventions', { method: 'POST', body: JSON.stringify({ studentId: selecionada.alunoId, alertId: selecionada.id, kind: formulario.acao, description: formulario.relato, occurredAt: formulario.data }) });
+      setValidado(false);
+      setMensagem('Relatório registrado no banco de dados.');
+      await refresh();
+    } catch (requestError) { setMensagem(requestError.message); }
   }
 
   // Só pode encerrar depois que o formulário foi preenchido e salvo.
-  function encerrarIntervencao() {
+  async function encerrarIntervencao() {
     if (!selecionada?.relatorio) return;
-
-    setOcorrencias((atuais) =>
-      atuais.map((o) =>
-        o.id === selecionadaId ? { ...o, status: 'Encerrada' } : o
-      )
-    );
-    setSelecionadaId(null);
+    if (!apiPronta) {
+      setOcorrenciasLocais((atuais) => atuais.map((item) => item.id === selecionadaId ? { ...item, status: 'Encerrada' } : item));
+      setSelecionadaId(null);
+      return;
+    }
+    try {
+      await apiRequest(`/alerts/${selecionada.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) });
+      setSelecionadaId(null);
+      setMensagem('Intervenção encerrada.');
+      await refresh();
+    } catch (requestError) { setMensagem(requestError.message); }
   }
 
   return (
@@ -222,6 +249,9 @@ export default function Intervencoes() {
           </button>
         </div>
       </header>
+
+      {erroApi && <div className="alert alert-warning">Não foi possível conectar à API. A lista abaixo usa apenas dados demonstrativos; os registros não serão enviados ao banco. <span className="d-block small mt-1">{erroApi}</span></div>}
+      {mensagem && <div className={`alert ${mensagem.includes('banco de dados') ? 'alert-success' : mensagem.includes('demonstração') ? 'alert-info' : 'alert-danger'}`} role="status">{mensagem}</div>}
 
       <div className="d-flex align-items-center gap-2 mb-4">
         <h1 className="fw-bold mb-0">Ocorrências</h1>

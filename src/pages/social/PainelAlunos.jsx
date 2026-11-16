@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Auth } from '../../services/auth';
 import iconeAncora from '../../assets/icone-sistema.png';
+import { useApiResource } from '../../services/useApiResource';
 
 /*
  * Arquivo: painelalunos.jsx
@@ -14,22 +15,23 @@ import iconeAncora from '../../assets/icone-sistema.png';
 
 export default function PainelAlunos() {
   const navigate = useNavigate();
-
-  // Dados fictícios para visualizar a tela durante o protótipo.
-  // Serão substituídos pelos dados reais quando houver integração com a API.
+  const { data: alertas, loading: carregandoAlertas, error: erroAlertas } = useApiResource('/alerts', 'alertas');
+  const { data: intervencoes, loading: carregandoIntervencoes, error: erroIntervencoes } = useApiResource('/interventions', 'intervencoes');
+  const abertos = alertas.filter((alerta) => ['new', 'in_progress', 'overdue'].includes(alerta.status));
   const dados = {
-    alunosComAlerta: 12,
-    intervencoesRealizadas: 8,
-    alertasEmAtraso: 3,
-    ocorrenciasNaoRespondidas: 3,
+    alunosComAlerta: carregandoAlertas ? '—' : new Set(abertos.map((alerta) => alerta.student_id)).size,
+    intervencoesRealizadas: carregandoIntervencoes ? '—' : intervencoes.length,
+    alertasEmAtraso: carregandoAlertas ? '—' : alertas.filter((alerta) => alerta.status === 'overdue').length,
+    ocorrenciasNaoRespondidas: carregandoAlertas ? 0 : alertas.filter((alerta) => ['new', 'in_progress'].includes(alerta.status)).length,
   };
-
-  const alertasRecentes = [
-    { id: 1, nome: 'Aluno Exemplo A', turma: '1º ano A', tipo: 'Frequência', situacao: 'Não respondida' },
-    { id: 2, nome: 'Aluno Exemplo B', turma: '2º ano B', tipo: 'Notas', situacao: 'Em andamento' },
-    { id: 3, nome: 'Aluno Exemplo C', turma: '3º ano A', tipo: 'Frequência', situacao: 'Não respondida' },
-    { id: 4, nome: 'Aluno Exemplo D', turma: '1º ano B', tipo: 'Notas', situacao: 'Respondida' },
-  ];
+  const alertasRecentes = [...alertas].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6).map((alerta) => ({
+    id: alerta.id,
+    alunoId: alerta.student_id,
+    nome: alerta.student_name,
+    turma: alerta.class_name || '—',
+    tipo: ({ attendance: 'Frequência', grade: 'Notas', combined: 'Combinado', manual: 'Manual' })[alerta.kind],
+    situacao: ({ new: 'Novo', in_progress: 'Em andamento', resolved: 'Concluído', overdue: 'Em atraso' })[alerta.status],
+  }));
 
   const indicadores = [
     {
@@ -87,8 +89,9 @@ export default function PainelAlunos() {
 
       <div className="d-flex align-items-center gap-2 mb-4">
         <h1 className="fw-bold mb-0">Painel Alunos</h1>
-        <span className="badge text-bg-secondary">Dados de exemplo</span>
+        <span className="badge text-bg-success">Dados da API</span>
       </div>
+      {(erroAlertas || erroIntervencoes) && <div className="alert alert-danger">{erroAlertas || erroIntervencoes}</div>}
 
       {/* Aviso de ocorrências não respondidas, com atalho para Intervenções */}
       <section
@@ -171,7 +174,7 @@ export default function PainelAlunos() {
                     <td>{alerta.situacao}</td>
                     <td>
                       <Link
-                        to={`/alunos/${alerta.id}`}
+                        to={`/alunos/${alerta.alunoId}`}
                         className="btn btn-sm btn-outline-primary rounded-pill"
                       >
                         Ver aluno

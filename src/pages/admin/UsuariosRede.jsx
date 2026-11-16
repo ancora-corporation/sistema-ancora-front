@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { usuariosExemplo } from '../../data/usuariosExemplo';
+import { useMemo } from 'react';
+import { useApiResource } from '../../services/useApiResource';
 
 const NIVEIS_ACESSO = {
   1: { rotulo: 'Nível 1 - Assistência social', classe: 'text-bg-info' },
@@ -7,11 +8,6 @@ const NIVEIS_ACESSO = {
   3: { rotulo: 'Nível 3 - Administrador', classe: 'text-bg-dark' },
   4: { rotulo: 'Nível 4 - Professor', classe: 'text-bg-success' },
 };
-
-// Opções do filtro de escola, tiradas dos próprios dados (sem repetir e sem vazios)
-const escolas = [
-  ...new Set(usuariosExemplo.map((u) => u.escola).filter(Boolean)),
-];
 
 // Ignora maiúsculas e acentos: "usuario" encontra "Usuário"
 function normalizar(texto) {
@@ -22,6 +18,18 @@ function normalizar(texto) {
 }
 
 export default function UsuariosRede() {
+  const { data: apiUsuarios, loading, error } = useApiResource('/users', 'usuarios');
+  const usuariosExemplo = useMemo(() => apiUsuarios.map((usuario) => ({
+    id: usuario.id,
+    nome: usuario.name,
+    matricula: usuario.registry_number || '—',
+    email: usuario.email,
+    telefone: usuario.phone || '—',
+    nivel: ({ social: 1, director: 2, admin: 3, teacher: 4 })[usuario.role],
+    escolaId: usuario.school_id,
+    escola: usuario.school_name,
+  })), [apiUsuarios]);
+  const escolas = [...new Set(usuariosExemplo.map((usuario) => usuario.escola).filter(Boolean))];
   // Os filtros ficam na URL (ex.: /admin/usuarios?escola=...)
   const [params, setParams] = useSearchParams();
 
@@ -60,6 +68,8 @@ export default function UsuariosRede() {
           Perfis das pessoas com acesso ao sistema.
         </p>
       </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
@@ -117,7 +127,7 @@ export default function UsuariosRede() {
       </div>
 
       <p className="small text-body-secondary">
-        Mostrando {visiveis.length} de {usuariosExemplo.length} usuários
+        {loading ? 'Carregando usuários...' : `Mostrando ${visiveis.length} de ${usuariosExemplo.length} usuários`}
       </p>
 
       <div className="card border-0 shadow-sm">

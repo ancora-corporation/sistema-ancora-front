@@ -1,18 +1,6 @@
 import { Link } from 'react-router-dom';
 import CartaoIndicador from '../../components/CartaoIndicador';
-import { alertasExemplo } from '../../data/alertasExemplo';
-import { usuariosExemplo } from '../../data/usuariosExemplo';
-
-// VALORES FICTÍCIOS, só para montar a tela.
-// Quando a API existir, estes números passam a vir dela.
-const indicadores = {
-  alertasAbertos: 9,
-  alertasTotal: 12,
-  escolasAResponder: 5,
-  escolasEmAtraso: 3,
-  evasaoPercentual: '4,2%',
-  evasaoReferencia: 'setembro de 2026',
-};
+import { useApiResource } from '../../services/useApiResource';
 
 const atalhos = [
   { to: '/admin/alertas', icone: 'bi-bell', titulo: 'Alertas', texto: 'Todos os alertas e seus prazos' },
@@ -22,12 +10,25 @@ const atalhos = [
 ];
 
 export default function PainelRede() {
+  const { data: alertas, loading: carregandoAlertas, error: erroAlertas } = useApiResource('/alerts', 'alertas');
+  const { data: escolas, loading: carregandoEscolas, error: erroEscolas } = useApiResource('/schools', 'escolas');
+  const { data: usuarios } = useApiResource('/users', 'usuarios');
+  const emAberto = alertas.filter((alerta) => ['new', 'in_progress', 'overdue'].includes(alerta.status));
+  const aResponder = alertas.filter((alerta) => ['new', 'in_progress'].includes(alerta.status));
+  const atrasados = alertas.filter((alerta) => alerta.status === 'overdue');
+  const indicadores = {
+    alertasAbertos: carregandoAlertas ? '—' : emAberto.length,
+    alertasTotal: carregandoAlertas ? '—' : alertas.length,
+    escolasAResponder: carregandoAlertas ? '—' : new Set(aResponder.map((alerta) => alerta.school_name)).size,
+    escolasEmAtraso: carregandoAlertas ? '—' : new Set(atrasados.map((alerta) => alerta.school_name)).size,
+  };
+
   function gerarRelatorio() {
     const linhas = [
       ['Escola', 'Código', 'Alunos cadastrados', 'Profissionais', 'Alertas em aberto', 'Alertas em atraso'],
-      ...[...new Map(usuariosExemplo.filter((usuario) => usuario.escolaId).map((usuario) => [usuario.escolaId, usuario.escola])).entries()].map(([id, escola]) => {
-        const alertas = alertasExemplo.filter((alerta) => alerta.escola === escola);
-        return [escola, `EM-${String(id).padStart(3, '0')}`, '—', usuariosExemplo.filter((usuario) => usuario.escolaId === id).length, alertas.filter((alerta) => ['novo', 'em_andamento'].includes(alerta.status)).length, alertas.filter((alerta) => alerta.status === 'em_atraso').length];
+      ...escolas.map((escola) => {
+        const alertasDaEscola = alertas.filter((alerta) => alerta.school_name === escola.name);
+        return [escola.name, escola.code, escola.student_count, usuarios.filter((usuario) => usuario.school_id === escola.id).length, alertasDaEscola.filter((alerta) => ['new', 'in_progress'].includes(alerta.status)).length, alertasDaEscola.filter((alerta) => alerta.status === 'overdue').length];
       }),
     ];
     const csv = `\uFEFF${linhas.map((linha) => linha.map((valor) => `"${String(valor).replaceAll('"', '""')}"`).join(';')).join('\r\n')}`;
@@ -43,11 +44,13 @@ export default function PainelRede() {
     <>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <h1 className="h2 mb-0">Painel da Rede</h1>
-        <button type="button" className="btn btn-primary" onClick={gerarRelatorio}>
+        <button type="button" className="btn btn-primary" onClick={gerarRelatorio} disabled={carregandoEscolas || carregandoAlertas}>
           <i className="bi bi-download me-2" aria-hidden="true"></i>
           Gerar relatório da rede (CSV)
         </button>
       </div>
+
+      {(erroAlertas || erroEscolas) && <div className="alert alert-danger">{erroAlertas || erroEscolas}</div>}
 
       <div className="row g-3 mb-5">
         <div className="col-12 col-md-6 col-xl-3">
@@ -81,8 +84,8 @@ export default function PainelRede() {
         <div className="col-12 col-md-6 col-xl-3">
           <CartaoIndicador
             titulo="Evasão da rede"
-            valor={indicadores.evasaoPercentual}
-            detalhe={`Atualizado mensalmente (ref. ${indicadores.evasaoReferencia})`}
+            valor="—"
+            detalhe="Aguardando integração do indicador com o modelo ML"
           />
         </div>
       </div>

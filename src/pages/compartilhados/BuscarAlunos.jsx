@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Auth } from '../../services/auth';
+import { useApiResource } from '../../services/useApiResource';
 import iconeAncora from '../../assets/icone-sistema.png';
 
 /*
@@ -12,19 +13,8 @@ import iconeAncora from '../../assets/icone-sistema.png';
  * com barra de pesquisa, filtros e link para o perfil de cada aluno.
  */
 
-// Dados fictícios para visualizar a tela durante o protótipo.
-// Serão substituídos pelos dados reais quando houver integração com a API.
-const alunosExemplo = [
-  { id: 1, nome: 'Aluno Exemplo A', matricula: 'EXEMPLO-001', turma: '1º ano A', turno: 'Manhã', alerta: 'Alto' },
-  { id: 2, nome: 'Aluno Exemplo B', matricula: 'EXEMPLO-002', turma: '2º ano B', turno: 'Tarde', alerta: 'Médio' },
-  { id: 3, nome: 'Aluno Exemplo C', matricula: 'EXEMPLO-003', turma: '3º ano A', turno: 'Manhã', alerta: 'Baixo' },
-  { id: 4, nome: 'Aluno Exemplo D', matricula: 'EXEMPLO-004', turma: '1º ano B', turno: 'Tarde', alerta: 'Alto' },
-  { id: 5, nome: 'Aluno Exemplo E', matricula: 'EXEMPLO-005', turma: '2º ano A', turno: 'Noite', alerta: 'Não definido' },
-  { id: 6, nome: 'Aluno Exemplo F', matricula: 'EXEMPLO-006', turma: '3º ano B', turno: 'Noite', alerta: 'Médio' },
-];
-
-const turmas = [...new Set(alunosExemplo.map((aluno) => aluno.turma))];
-const turnos = ['Manhã', 'Tarde', 'Noite'];
+const TURNO = { morning: 'Manhã', afternoon: 'Tarde', evening: 'Noite' };
+const NIVEL = { high: 'Alto', medium: 'Médio', low: 'Baixo' };
 const niveisAlerta = ['Alto', 'Médio', 'Baixo', 'Não definido'];
 
 const corDoAlerta = {
@@ -53,6 +43,17 @@ const filtrosVazios = {
 export default function BuscarAlunos() {
   const navigate = useNavigate();
   const [filtros, setFiltros] = useState(filtrosVazios);
+  const { data: registros, loading, error } = useApiResource('/students', 'alunos');
+  const alunosExemplo = useMemo(() => registros.map((aluno) => ({
+    id: aluno.id,
+    nome: aluno.name,
+    matricula: aluno.enrollment,
+    turma: aluno.class_names,
+    turno: (aluno.shifts || '').split(', ').map((turno) => TURNO[turno] || turno).join(', '),
+    alerta: NIVEL[aluno.latest_risk_level] || 'Não definido',
+  })), [registros]);
+  const turmas = useMemo(() => [...new Set(alunosExemplo.map((aluno) => aluno.turma))], [alunosExemplo]);
+  const turnos = useMemo(() => [...new Set(alunosExemplo.map((aluno) => aluno.turno))], [alunosExemplo]);
 
   function atualizarFiltro(campo, valor) {
     setFiltros((atual) => ({ ...atual, [campo]: valor }));
@@ -105,6 +106,8 @@ export default function BuscarAlunos() {
         <h1 className="fw-bold mb-0">Alunos</h1>
         <span className="badge text-bg-secondary">Dados de exemplo</span>
       </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
 
       {/* Barra de pesquisa e filtros */}
       <section className="card border-0 shadow-sm mb-4">
@@ -212,7 +215,7 @@ export default function BuscarAlunos() {
       <section className="card border-0 shadow-sm">
         <div className="card-body p-3 p-md-4">
           <h2 className="h5 fw-bold mb-3">
-            Resultados ({alunosFiltrados.length})
+            {loading ? 'Carregando alunos...' : `Resultados (${alunosFiltrados.length})`}
           </h2>
 
           <div className="table-responsive">

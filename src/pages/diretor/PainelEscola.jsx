@@ -1,10 +1,20 @@
 
 import { Link, useNavigate } from 'react-router-dom';
 import { Auth } from '../../services/auth';
+import { useApiResource } from '../../services/useApiResource';
 
 export default function PainelEscola() {
   const navigate = useNavigate();
   const usuario = Auth.usuarioAtual();
+  const { data: alunos, error: erroAlunos } = useApiResource('/students', 'alunos');
+  const { data: alertas, error: erroAlertas } = useApiResource('/alerts', 'alertas');
+  const { data: intervencoes, error: erroIntervencoes } = useApiResource('/interventions', 'intervencoes');
+  const metricas = {
+    alertasAResponder: alertas.filter((alerta) => ['new', 'in_progress'].includes(alerta.status)).length,
+    alertasEmAtraso: alertas.filter((alerta) => alerta.status === 'overdue').length,
+    intervencoes: intervencoes.length,
+    alunos: alunos.length,
+  };
 
   function sair() {
     Auth.sair();
@@ -50,6 +60,7 @@ export default function PainelEscola() {
           <button type="button" className="btn btn-outline-secondary btn-sm" onClick={sair}>Sair</button>
         </nav>
       </header>
+      {(erroAlunos || erroAlertas || erroIntervencoes) && <div className="alert alert-danger">{erroAlunos || erroAlertas || erroIntervencoes}</div>}
       {/* Cabeçalho da página */}
       <header className="mb-4">
         <h1 className="fw-bold mb-2">
@@ -80,9 +91,7 @@ export default function PainelEscola() {
                   {indicador.descricao}
                 </p>
 
-                <p className="fw-semibold mb-0">
-                  Sem dados disponíveis
-                </p>
+                <p className="fw-semibold mb-0">{({ 'Alertas a responder': metricas.alertasAResponder, 'Alertas em atraso': metricas.alertasEmAtraso, 'Intervenções feitas': metricas.intervencoes, 'Quantidade de alunos': metricas.alunos })[indicador.titulo]}</p>
               </div>
             </article>
           </div>
