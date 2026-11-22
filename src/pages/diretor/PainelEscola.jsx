@@ -1,5 +1,27 @@
 
+import { Link, useNavigate } from 'react-router-dom';
+import { Auth } from '../../services/auth';
+import { useApiResource } from '../../services/useApiResource';
+import MinhaConta from '../../components/MinhaConta';
+
 export default function PainelEscola() {
+  const navigate = useNavigate();
+  const usuario = Auth.usuarioAtual();
+  const { data: alunos, error: erroAlunos } = useApiResource('/students', 'alunos');
+  const { data: alertas, error: erroAlertas } = useApiResource('/alerts', 'alertas');
+  const { data: intervencoes, error: erroIntervencoes } = useApiResource('/interventions', 'intervencoes');
+  const metricas = {
+    alertasAResponder: alertas.filter((alerta) => ['new', 'in_progress'].includes(alerta.status)).length,
+    alertasEmAtraso: alertas.filter((alerta) => alerta.status === 'overdue').length,
+    intervencoes: intervencoes.length,
+    alunos: alunos.length,
+  };
+
+  function sair() {
+    Auth.sair();
+    navigate('/login');
+  }
+
   // Indicadores da escola.
   // Os dados serão preenchidos futuramente pela API.
   const indicadores = [
@@ -27,6 +49,20 @@ export default function PainelEscola() {
 
   return (
     <main className="container-fluid py-4 px-3 px-md-4">
+      <header className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+          <span className="small text-primary fw-bold text-uppercase">Área da direção</span>
+          <div className="text-secondary small">{usuario?.nome} · {usuario?.escola}</div>
+        </div>
+        <nav className="d-flex flex-wrap align-items-center gap-2" aria-label="Navegação da direção">
+          <Link to="/alunos" className="btn btn-outline-primary btn-sm">Alunos</Link>
+          <Link to="/ocorrencias" className="btn btn-outline-primary btn-sm">Ocorrências</Link>
+          <Link to="/contas" className="btn btn-outline-primary btn-sm">Contas</Link>
+          <MinhaConta />
+          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={sair}>Sair</button>
+        </nav>
+      </header>
+      {(erroAlunos || erroAlertas || erroIntervencoes) && <div className="alert alert-danger">{erroAlunos || erroAlertas || erroIntervencoes}</div>}
       {/* Cabeçalho da página */}
       <header className="mb-4">
         <h1 className="fw-bold mb-2">
@@ -57,9 +93,7 @@ export default function PainelEscola() {
                   {indicador.descricao}
                 </p>
 
-                <p className="fw-semibold mb-0">
-                  Sem dados disponíveis
-                </p>
+                <p className="fw-semibold mb-0">{({ 'Alertas a responder': metricas.alertasAResponder, 'Alertas em atraso': metricas.alertasEmAtraso, 'Intervenções feitas': metricas.intervencoes, 'Quantidade de alunos': metricas.alunos })[indicador.titulo]}</p>
               </div>
             </article>
           </div>

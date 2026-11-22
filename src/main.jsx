@@ -6,6 +6,11 @@ import '@fontsource/raleway/300.css';
 import '@fontsource/raleway/700.css';
 import './styles/custom.css';
 import App from './App.jsx';
+import 'bootstrap-icons/font/bootstrap-icons.css';
+import '@fontsource/raleway/300.css';
+import '@fontsource/raleway/400.css';
+import '@fontsource/raleway/600.css';
+import '@fontsource/raleway/700.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
