@@ -83,7 +83,12 @@ try {
         'INSERT INTO ALUNO (escola_id, nome_aluno) VALUES ($1, $2) RETURNING id, matricula', [school.id, name],
       ));
     }
-    await pool.query('INSERT INTO ALUNO_TURMA (turma_id, aluno_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [classId, student.id]);
+    await pool.query(
+      `INSERT INTO ALUNO_TURMA (turma_id, aluno_id) VALUES ($1, $2)
+       ON CONFLICT (turma_id, aluno_id) DO UPDATE SET
+         data_matricula = CASE WHEN ALUNO_TURMA.data_saida IS NOT NULL THEN CURRENT_DATE ELSE ALUNO_TURMA.data_matricula END,
+         data_saida = NULL`, [classId, student.id],
+    );
     students.push({ name, id: student.id, classId });
   }
 
@@ -103,13 +108,15 @@ try {
   }
 
   const ana = students.find((student) => student.name === 'Ana Exemplo');
-  await pool.query(
-    `INSERT INTO NOTA (turma_id, aluno_id, id_lotacao, disciplina, avaliacao, periodo, valor, registrada_por)
-     SELECT $1, $2, l.id, d.nome, 'Avaliação inicial', EXTRACT(YEAR FROM CURRENT_DATE)::text, 8.5, $3
-     FROM LOTACAO l JOIN DISCIPLINA d ON d.id = l.id_disciplina WHERE l.id_turma = $1 AND l.id_professor = $3 AND d.nome = 'Matemática'
-     ON CONFLICT (turma_id, aluno_id, disciplina, avaliacao, periodo) DO UPDATE SET id_lotacao = EXCLUDED.id_lotacao, valor = EXCLUDED.valor, atualizacao = NOW()`,
-    [classes[0], ana.id, users['professor@ancora.com']],
-  );
+  for (const [index, value] of [8, 8.5, 9, 9.5].entries()) {
+    await pool.query(
+      `INSERT INTO NOTA (turma_id, aluno_id, id_lotacao, disciplina, avaliacao, periodo, valor, registrada_por)
+       SELECT $1, $2, l.id, d.nome, $4, EXTRACT(YEAR FROM CURRENT_DATE)::text, $5, $3
+       FROM LOTACAO l JOIN DISCIPLINA d ON d.id = l.id_disciplina WHERE l.id_turma = $1 AND l.id_professor = $3 AND d.nome = 'Matemática'
+       ON CONFLICT (turma_id, aluno_id, disciplina, avaliacao, periodo) DO UPDATE SET id_lotacao = EXCLUDED.id_lotacao, valor = EXCLUDED.valor, atualizacao = NOW()`,
+      [classes[0], ana.id, users['professor@ancora.com'], `Avaliação ${index + 1}`, value],
+    );
+  }
 
   for (const [studentName, status, level, score, summary, dueOffset] of [
     ['Daniel Exemplo', 'novo', 'alto', 0.82, 'Ausências frequentes registradas nesta turma.', 5],

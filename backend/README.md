@@ -35,17 +35,23 @@ Todas as rotas de negócio exigem `Authorization: Bearer <token>`. O servidor re
 
 - `POST /api/v1/auth/login`, `GET/PATCH /api/v1/auth/me`
 - `GET /api/v1/schools`, `GET/POST /api/v1/users`, `PATCH /api/v1/users/:id/status`
-- `GET/POST /api/v1/classes`, `GET /api/v1/classes/:id/alunos`, `POST /api/v1/classes/:id/lotacoes`
+- `GET/POST /api/v1/classes`, `PATCH /api/v1/classes/:id/status`, `GET /api/v1/classes/:id/alunos`
+- `POST /api/v1/classes/:id/alunos`, `DELETE /api/v1/classes/:id/alunos/:studentId` (encerra a matrícula sem apagar chamadas ou notas)
+- `GET /api/v1/classes/:id/matriculas` (matrículas atuais e períodos encerrados; administrador e direção)
+- `POST /api/v1/classes/:id/lotacoes`, `PATCH /api/v1/classes/:id/lotacoes/:lotacaoId/status`
 - `GET/POST /api/v1/students`, `GET /api/v1/students/:id`
-- `GET /api/v1/attendance`, `PUT /api/v1/attendance`
-- `GET /api/v1/grades`, `PUT/DELETE /api/v1/grades`
+- `GET /api/v1/students/:id/historico-academico` (notas agrupadas por matéria e ano, médias das quatro avaliações e frequência consolidada)
+- `PATCH /api/v1/students/:id`, `GET /api/v1/students/:id/auditoria`
+- `GET/POST /api/v1/students/:id/responsaveis`, `PATCH/DELETE /api/v1/students/:id/responsaveis/:responsavelId`
+- `GET /api/v1/attendance`, `PUT /api/v1/attendance` (exige chamada completa da turma e não permite datas futuras)
+- `GET /api/v1/grades`, `PUT/DELETE /api/v1/grades` (quatro avaliações fixas; consulta também retorna média parcial, quantidade de avaliações e média final após a quarta nota)
 - `GET /api/v1/alerts`, `PATCH /api/v1/alerts/:id/status`
 - `GET/POST /api/v1/interventions`
 - `GET/POST /api/v1/ml/runs`
 
 ## PostgreSQL e dados demonstrativos
 
-As migrações versionadas ficam em `src/db/migrations`. O cadastro comum fica em `USUARIO`; `ADMINISTRADOR`, `DIRETOR`, `PROFESSOR` e `ASSISTENTE_SOCIAL` guardam os perfis e vínculos específicos. `DISCIPLINA` cataloga disciplinas e `LOTACAO` relaciona professor, turma, disciplina e ano letivo. Chamada e nota apontam para a lotação. A migração `003_perfis_e_lotacoes.sql` transfere os vínculos existentes antes de remover os campos e a tabela antigos. No SQL do projeto, tabelas e colunas são escritas em português e maiúsculo sem aspas. O PostgreSQL normaliza identificadores sem aspas para minúsculas internamente. O histórico fica em `MIGRACAO_ESQUEMA`. Para aplicar mudanças, acrescente uma migração numerada em `src/db/migrations`; o script `src/db/migrate.js` aplica os arquivos em ordem. `npm run db:seed` só funciona com `SEED_DEMO=true` e fora de produção. As contas demonstrativas compartilham a senha `123456`; use somente localmente e nunca reutilize em produção.
+As migrações versionadas ficam em `src/db/migrations`. O cadastro comum fica em `USUARIO`; `ADMINISTRADOR`, `DIRETOR`, `PROFESSOR` e `ASSISTENTE_SOCIAL` guardam os perfis e vínculos específicos. `DISCIPLINA` cataloga disciplinas e `LOTACAO` relaciona professor, turma, disciplina e ano letivo. `RESPONSAVEL` e `ALUNO_RESPONSAVEL` mantêm os contatos e o parentesco dos responsáveis vinculados aos alunos. `AUDITORIA_ALUNO` registra alterações no cadastro. `ALUNO_TURMA.data_saida` encerra uma matrícula sem apagar dados escolares; quando o aluno volta à mesma turma, a matrícula encerrada é copiada para `HISTORICO_MATRICULA_TURMA` antes de reativar o vínculo atual. A migração `006_historico_matricula_turma.sql` adiciona esse histórico. Chamada e nota continuam preservadas. No SQL do projeto, tabelas e colunas são escritas em português e maiúsculo sem aspas. O PostgreSQL normaliza identificadores sem aspas para minúsculas internamente. O histórico de versões fica em `MIGRACAO_ESQUEMA`. Para aplicar mudanças, acrescente uma migração numerada em `src/db/migrations`; o script `src/db/migrate.js` aplica os arquivos em ordem. `npm run db:seed` só funciona com `SEED_DEMO=true` e fora de produção. As contas demonstrativas compartilham a senha `123456`; use somente localmente e nunca reutilize em produção.
 
 ## Integração do modelo de ML
 

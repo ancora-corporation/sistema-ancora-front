@@ -3,17 +3,19 @@
 import { useParams } from 'react-router-dom';
 import { useApiResource } from '../../services/useApiResource';
 
+const HISTORICO_VAZIO = { notas: [], frequencia_por_turma: [], resumo: {} };
+
 export default function DetalhesAluno() {
   // Recupera o identificador do aluno informado na URL.
   const { id } = useParams();
   const { data: aluno, loading, error } = useApiResource(`/students/${id}`, 'aluno', null);
   const { data: frequencia } = useApiResource(`/students/${id}/attendance`, 'frequencia');
-  const { data: notas } = useApiResource(`/students/${id}/grades`, 'notas');
+  const { data: historico, error: erroHistorico } = useApiResource(`/students/${id}/historico-academico`, 'historico', HISTORICO_VAZIO);
+  const notas = historico.notas;
+  const resumo = historico.resumo;
   const { data: alertas } = useApiResource(`/alerts?studentId=${encodeURIComponent(id)}`, 'alertas');
-  const faltas = frequencia.filter((registro) => registro.status === 'absent');
-  const presencas = frequencia.filter((registro) => registro.status === 'present');
-  const percentualFrequencia = frequencia.length ? Math.round((presencas.length / frequencia.length) * 100) : null;
-  const mediaNotas = notas.length ? (notas.reduce((total, nota) => total + Number(nota.value), 0) / notas.length).toFixed(1) : '—';
+  const percentualFrequencia = resumo.percentual == null ? null : Math.round(Number(resumo.percentual));
+  const mediaNotas = resumo.media_geral == null ? '—' : Number(resumo.media_geral).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
   const nivelRisco = alertas[0]?.risk_level;
 
   /*
@@ -25,6 +27,7 @@ export default function DetalhesAluno() {
   return (
     <main className="container-fluid p-3 p-md-4">
       {error && <div className="alert alert-danger">{error}</div>}
+      {erroHistorico && <div className="alert alert-danger">Não foi possível carregar o histórico acadêmico: {erroHistorico}</div>}
       {loading && <p className="text-secondary">Carregando dados do aluno...</p>}
       {/* Cabeçalho da página e caminho de navegação */}
       <header className="mb-4">
@@ -99,7 +102,7 @@ export default function DetalhesAluno() {
       {/* Indicadores resumidos da frequência escolar */}
       <section className="mb-4" aria-labelledby="indicadores-titulo">
         <h2 id="indicadores-titulo" className="h4 fw-bold mb-3">
-          Resumo da frequência
+          Resumo escolar
         </h2>
 
         <div className="row g-3">
@@ -114,7 +117,7 @@ export default function DetalhesAluno() {
                 <p className="h3 fw-bold mb-2">{percentualFrequencia == null ? '—' : `${percentualFrequencia}%`}</p>
 
                 <p className="small text-secondary mb-0">
-                  {frequencia.length ? `${presencas.length} presenças registradas` : 'Ainda sem chamada registrada'}
+                  {resumo.aulas_registradas ? `${resumo.presentes} de ${resumo.aulas_registradas} aulas com presença` : 'Ainda sem chamada registrada'}
                 </p>
               </div>
             </article>
@@ -128,27 +131,27 @@ export default function DetalhesAluno() {
                   Total de faltas
                 </p>
 
-                <p className="h3 fw-bold mb-2">{faltas.length}</p>
+                <p className="h3 fw-bold mb-2">{resumo.faltas ?? 0}</p>
 
                 <p className="small text-secondary mb-0">
-                  {frequencia.length ? `Em ${frequencia.length} registros de chamada` : 'Ainda sem chamada registrada'}
+                  {resumo.faltas_justificadas ? `${resumo.faltas_justificadas} faltas justificadas` : (resumo.aulas_registradas ? `Em ${resumo.aulas_registradas} aulas registradas` : 'Ainda sem chamada registrada')}
                 </p>
               </div>
             </article>
           </div>
 
-          {/* Quantidade de faltas consecutivas */}
+          {/* Média dos períodos concluídos */}
           <div className="col-12 col-sm-6 col-xl-3">
             <article className="card h-100 shadow-sm border-0">
               <div className="card-body">
                 <p className="text-secondary mb-2">
-                  Faltas consecutivas
+                  Média geral
                 </p>
 
                 <p className="h3 fw-bold mb-2">{mediaNotas}</p>
 
                 <p className="small text-secondary mb-0">
-                  {notas.length ? `${notas.length} notas registradas` : 'Ainda sem notas lançadas'}
+                  Média simples de {resumo.medias_finais_concluidas || 0} matéria(s)/período(s) concluído(s)
                 </p>
               </div>
             </article>
@@ -196,6 +199,29 @@ export default function DetalhesAluno() {
               </thead>
 
               <tbody>{frequencia.length === 0 ? <tr><td colSpan="3" className="text-center text-secondary py-4">Sem dados disponíveis para exibição.</td></tr> : frequencia.map((registro, index) => <tr key={`${registro.lesson_date}-${index}`}><td>{new Date(`${registro.lesson_date}T00:00:00`).toLocaleDateString('pt-BR')}</td><td>{({ present: 'Presente', absent: 'Ausente', excused: 'Justificada' })[registro.status]}</td><td>{registro.note || registro.class_name}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="card shadow-sm border-0 mb-4">
+        <div className="card-body p-4">
+          <h2 className="h4 fw-bold mb-3">Histórico acadêmico</h2>
+          <p className="text-secondary">Notas por turma, matéria e período. A média final aparece quando as quatro avaliações forem lançadas.</p>
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead><tr><th>Turma / ano</th><th>Matéria</th><th>Período</th><th>Avaliação 1</th><th>Avaliação 2</th><th>Avaliação 3</th><th>Avaliação 4</th><th>Média</th></tr></thead>
+              <tbody>
+                {notas.length === 0 ? <tr><td colSpan="8" className="text-center text-secondary py-4">Ainda não há avaliações lançadas.</td></tr> : notas.map((nota) => {
+                  const valores = Object.fromEntries(nota.assessments.map(({ assessment, value }) => [assessment, Number(value)]));
+                  const media = nota.final_average == null ? '—' : Number(nota.final_average).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+                  return <tr key={`${nota.class_id}-${nota.subject}-${nota.period}`}>
+                    <td>{nota.class_name} · {nota.academic_year}</td><td>{nota.subject}</td><td>{nota.period}</td>
+                    {[1, 2, 3, 4].map((numero) => <td key={numero}>{valores[`Avaliação ${numero}`]?.toLocaleString('pt-BR') ?? '—'}</td>)}
+                    <td><strong>{media}</strong><div className="small text-secondary">{nota.final_average == null ? `Parcial · ${nota.assessment_count}/4` : 'Média final'}</div></td>
+                  </tr>;
+                })}
+              </tbody>
             </table>
           </div>
         </div>

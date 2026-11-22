@@ -25,6 +25,9 @@ export default function PainelProfessor() {
   const turma = turmas.find((item) => item.id === lotacao?.class_id);
   const anoLetivoNotas = String(turma?.academic_year || new Date().getFullYear());
   const presentes = Object.values(chamada).filter((status) => status === 'present').length;
+  const estadosValidos = ['present', 'absent', 'excused'];
+  const registrosPreenchidos = alunos.filter((aluno) => estadosValidos.includes(chamada[aluno.id])).length;
+  const chamadaCompleta = alunos.length > 0 && registrosPreenchidos === alunos.length;
 
   useEffect(() => {
     apiRequest('/classes')
@@ -138,7 +141,7 @@ export default function PainelProfessor() {
             <div className="nav nav-tabs w-100" role="tablist" aria-label="Área do professor">
               {[['alunos', 'Lista de alunos', 'bi-people'], ['chamada', 'Chamada', 'bi-calendar-check'], ['notas', 'Notas e avaliações', 'bi-journal-check']].map(([id, rotulo, icone]) => <button key={id} className={`nav-link ${aba === id ? 'active fw-semibold' : ''}`} onClick={() => setAba(id)} role="tab" aria-selected={aba === id} aria-controls={`painel-${id}`} id={`aba-${id}`}><i className={`bi ${icone} me-2`} aria-hidden="true" />{rotulo}</button>)}
             </div>
-            {aba === 'chamada' && <div className="d-flex align-items-center gap-3"><span className="badge text-bg-primary">{presentes} de {alunos.length} presentes</span><button className="btn btn-primary btn-sm" onClick={salvarChamada} disabled={!Object.keys(chamada).length}><i className="bi bi-cloud-check me-1" />Salvar chamada</button></div>}
+            {aba === 'chamada' && <div className="d-flex flex-wrap align-items-center gap-3"><span className="badge text-bg-primary">{registrosPreenchidos}/{alunos.length} preenchidos · {presentes} presentes</span><button className="btn btn-primary btn-sm" onClick={salvarChamada} disabled={!chamadaCompleta}><i className="bi bi-cloud-check me-1" />Salvar chamada</button></div>}
           </div>
 
           {erro && <div className="alert alert-danger py-2" role="alert">{erro}</div>}

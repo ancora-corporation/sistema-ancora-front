@@ -75,7 +75,7 @@ router.get('/', async (req, res) => {
        SELECT CONCAT_WS(' - ', t.ano_serie, t.turno) AS nome_turma
        FROM ALUNO_TURMA at
        JOIN TURMA t ON t.id = at.turma_id
-       WHERE at.aluno_id = al.id AND t.status_turma
+       WHERE at.aluno_id = al.id AND at.data_saida IS NULL AND t.status_turma
        ORDER BY t.ano_letivo DESC
        LIMIT 1
      ) turma ON TRUE
@@ -85,7 +85,7 @@ router.get('/', async (req, res) => {
          FROM ALUNO_TURMA at
          JOIN TURMA t ON t.id = at.turma_id
          JOIN LOTACAO l ON l.id_turma = t.id
-         WHERE at.aluno_id = al.id AND t.status_turma AND l.id_professor = $3 AND l.ativa AND l.ano_letivo = t.ano_letivo
+         WHERE at.aluno_id = al.id AND at.data_saida IS NULL AND t.status_turma AND l.id_professor = $3 AND l.ativa AND l.ano_letivo = t.ano_letivo
        ))
        AND ($4::text IS NULL OR a.situacao = $4)
        AND ($5::text IS NULL OR a.nivel_risco = $5)

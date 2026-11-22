@@ -18,11 +18,11 @@ router.post('/', authenticate, allowRoles('admin', 'director'), validate(schema)
     if (!rowCount) return res.status(403).json({ error: 'Somente o diretor designado pelo administrador pode cadastrar alunos.' });
   }
   const { rows: [created] } = await pool.query(
-    `INSERT INTO ALUNO (escola_id, nome_aluno, data_nascimento)
-     SELECT id, $2, $3 FROM ESCOLA WHERE id = $1 AND status_escola
+    `INSERT INTO ALUNO (escola_id, nome_aluno, data_nascimento, atualizado_por)
+     SELECT id, $2, $3, $4 FROM ESCOLA WHERE id = $1 AND status_escola
      RETURNING id, escola_id AS school_id, matricula AS enrollment, nome_aluno AS name,
        data_nascimento AS birth_date, status_aluno AS is_active`,
-    [schoolId, student.name, student.birthDate || null],
+    [schoolId, student.name, student.birthDate || null, req.user.id],
   );
   if (!created) return res.status(404).json({ error: 'Escola não encontrada ou inativa.' });
   res.status(201).json({ aluno: created });

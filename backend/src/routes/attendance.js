@@ -39,6 +39,10 @@ router.put('/', allowRoles('teacher'), validate(saveSchema), async (req, res) =>
   const uniqueIds = new Set(records.map(({ studentId }) => studentId));
   if (uniqueIds.size !== records.length) return res.status(400).json({ error: 'Há alunos repetidos na chamada.' });
   const saved = await inTransaction(async (client) => {
+    const { rows: [dateCheck] } = await client.query(
+      'SELECT $1::date > CURRENT_DATE AS future', [lessonDate],
+    );
+    if (dateCheck.future) return { reason: 'future' };
     const { rows: [classRow] } = await client.query(
       `SELECT t.id FROM TURMA t JOIN LOTACAO l ON l.id_turma = t.id
        WHERE t.id = $1 AND l.id = $2 AND l.id_professor = $3 AND l.ativa
@@ -46,9 +50,13 @@ router.put('/', allowRoles('teacher'), validate(saveSchema), async (req, res) =>
     );
     if (!classRow) return null;
     const { rows: enrolled } = await client.query(
-      'SELECT aluno_id FROM ALUNO_TURMA WHERE turma_id = $1 AND aluno_id = ANY($2::uuid[])', [classId, [...uniqueIds]],
+      `SELECT at.aluno_id FROM ALUNO_TURMA at JOIN ALUNO a ON a.id = at.aluno_id
+       WHERE at.turma_id = $1 AND at.data_saida IS NULL AND a.status_aluno`, [classId],
     );
-    if (enrolled.length !== records.length) return false;
+    const enrolledIds = new Set(enrolled.map(({ aluno_id: id }) => id));
+    if (enrolledIds.size !== records.length || records.some(({ studentId }) => !enrolledIds.has(studentId))) {
+      return { reason: 'roster', expected: enrolledIds.size };
+    }
     const { rows: [session] } = await client.query(
       `INSERT INTO CHAMADA (turma_id, id_lotacao, data_aula, registrada_por) VALUES ($1, $2, $3, $4)
        ON CONFLICT (id_lotacao, data_aula) WHERE id_lotacao IS NOT NULL
@@ -65,7 +73,8 @@ router.put('/', allowRoles('teacher'), validate(saveSchema), async (req, res) =>
     return session.id;
   });
   if (saved === null) return res.status(403).json({ error: 'Esta turma não está vinculada ao seu perfil.' });
-  if (saved === false) return res.status(400).json({ error: 'A chamada contém alunos de outra turma.' });
+  if (saved?.reason === 'future') return res.status(400).json({ error: 'Não é possível registrar chamada para uma data futura.' });
+  if (saved?.reason === 'roster') return res.status(400).json({ error: `Informe a situação de todos os ${saved.expected} alunos ativos da turma.` });
   res.json({ sessionId: saved, registrosSalvos: records.length });
 });
 

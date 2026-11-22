@@ -11,6 +11,22 @@ const shiftToApi = { manha: 'morning', tarde: 'afternoon', noite: 'evening' };
 
 const createSchema = z.object({ body: z.object({ schoolId: z.uuid().optional(), teacherId: z.uuid(), name: z.string().trim().min(2).max(80), gradeLevel: z.string().trim().min(1).max(40), shift: z.enum(['morning', 'afternoon', 'evening']), subject: z.string().trim().min(1).max(100), academicYear: z.coerce.number().int().min(2000).max(2200).optional() }) });
 const lotacaoSchema = z.object({ params: z.object({ id: z.uuid() }), body: z.object({ teacherId: z.uuid(), subject: z.string().trim().min(1).max(100) }) });
+const classStatusSchema = z.object({ params: z.object({ id: z.uuid() }), body: z.object({ active: z.boolean() }) });
+const lotacaoStatusSchema = z.object({ params: z.object({ id: z.uuid(), lotacaoId: z.uuid() }), body: z.object({ active: z.boolean() }) });
+const unenrollSchema = z.object({ params: z.object({ id: z.uuid(), studentId: z.uuid() }) });
+const classParamsSchema = z.object({ params: z.object({ id: z.uuid() }) });
+
+router.patch('/:id/status', allowRoles('admin', 'director'), validate(classStatusSchema), async (req, res) => {
+  const { id } = req.validated.params;
+  const { active } = req.validated.body;
+  const { rows: [classRow] } = await pool.query(
+    `UPDATE TURMA SET status_turma = $2
+     WHERE id = $1 AND ($3 = 'admin' OR escola_id = $4)
+     RETURNING id, status_turma AS active`, [id, active, req.user.role, req.user.schoolId],
+  );
+  if (!classRow) return res.status(404).json({ error: 'Turma não encontrada nesta escola.' });
+  res.json({ turma: classRow });
+});
 
 router.post('/', allowRoles('admin', 'director'), validate(createSchema), async (req, res) => {
   const item = req.validated.body;
@@ -80,6 +96,21 @@ router.post('/:id/lotacoes', allowRoles('admin', 'director'), validate(lotacaoSc
   }
 });
 
+router.patch('/:id/lotacoes/:lotacaoId/status', allowRoles('admin', 'director'), validate(lotacaoStatusSchema), async (req, res) => {
+  const { id: classId, lotacaoId } = req.validated.params;
+  const { active } = req.validated.body;
+  const { rows: [lotacao] } = await pool.query(
+    `UPDATE LOTACAO l SET ativa = $3
+     FROM TURMA t
+     WHERE l.id = $1 AND l.id_turma = $2 AND t.id = l.id_turma
+       AND ($4 = 'admin' OR t.escola_id = $5)
+     RETURNING l.id, l.id_turma AS class_id, l.ativa AS active`,
+    [lotacaoId, classId, active, req.user.role, req.user.schoolId],
+  );
+  if (!lotacao) return res.status(404).json({ error: 'Lotação não encontrada nesta escola.' });
+  res.json({ lotacao });
+});
+
 router.get('/', async (req, res) => {
   const { rows } = await pool.query(
     `SELECT t.id, t.nome_turma AS name, t.ano_serie AS grade_level,
@@ -93,7 +124,7 @@ router.get('/', async (req, res) => {
        t.ano_letivo AS academic_year, t.escola_id AS school_id,
        e.nome_escola AS school_name, COUNT(DISTINCT at.aluno_id)::int AS student_count
      FROM TURMA t JOIN ESCOLA e ON e.id = t.escola_id
-     LEFT JOIN ALUNO_TURMA at ON at.turma_id = t.id
+     LEFT JOIN ALUNO_TURMA at ON at.turma_id = t.id AND at.data_saida IS NULL
      LEFT JOIN LOTACAO l ON l.id_turma = t.id AND l.ativa AND l.ano_letivo = t.ano_letivo
      LEFT JOIN DISCIPLINA d ON d.id = l.id_disciplina AND d.ativa
      WHERE t.status_turma AND ($1 = 'admin' OR t.escola_id = $2)
@@ -106,7 +137,7 @@ router.get('/', async (req, res) => {
 router.get('/:id/alunos', async (req, res) => {
   const { rows } = await pool.query(
     `SELECT a.id, a.nome_aluno AS name, a.matricula AS enrollment
-     FROM TURMA t JOIN ALUNO_TURMA at ON at.turma_id = t.id
+     FROM TURMA t JOIN ALUNO_TURMA at ON at.turma_id = t.id AND at.data_saida IS NULL
      JOIN ALUNO a ON a.id = at.aluno_id
      WHERE t.id = $1 AND t.status_turma AND a.status_aluno
        AND ($2 = 'admin' OR t.escola_id = $3)
@@ -114,6 +145,24 @@ router.get('/:id/alunos', async (req, res) => {
      ORDER BY a.nome_aluno`, [req.params.id, req.user.role, req.user.schoolId, req.user.id],
   );
   res.json({ alunos: rows });
+});
+
+router.get('/:id/matriculas', allowRoles('admin', 'director'), validate(classParamsSchema), async (req, res) => {
+  const { id: classId } = req.validated.params;
+  const { rows } = await pool.query(
+    `SELECT a.id AS student_id, a.nome_aluno AS student_name, a.matricula AS enrollment,
+       at.data_matricula AS enrollment_date, at.data_saida AS exit_date,
+       CASE WHEN at.data_saida IS NULL THEN 'active' ELSE 'ended' END AS status
+     FROM ALUNO_TURMA at JOIN ALUNO a ON a.id = at.aluno_id JOIN TURMA t ON t.id = at.turma_id
+     WHERE t.id = $1 AND ($2 = 'admin' OR t.escola_id = $3)
+     UNION ALL
+     SELECT a.id AS student_id, a.nome_aluno AS student_name, a.matricula AS enrollment,
+       h.data_matricula AS enrollment_date, h.data_saida AS exit_date, 'ended' AS status
+     FROM HISTORICO_MATRICULA_TURMA h JOIN ALUNO a ON a.id = h.aluno_id JOIN TURMA t ON t.id = h.turma_id
+     WHERE t.id = $1 AND ($2 = 'admin' OR t.escola_id = $3)
+     ORDER BY enrollment_date DESC, student_name`, [classId, req.user.role, req.user.schoolId],
+  );
+  res.json({ matriculas: rows });
 });
 
 const enrollmentSchema = z.object({ params: z.object({ id: z.uuid() }), body: z.object({ studentIds: z.array(z.uuid()).min(1).max(100) }) });
@@ -132,12 +181,48 @@ router.post('/:id/alunos', allowRoles('admin', 'director'), validate(enrollmentS
       'SELECT id FROM ALUNO WHERE id = ANY($1::uuid[]) AND escola_id = $2 AND status_aluno', [ids, classRow.escola_id],
     );
     if (students.length !== ids.length) return false;
-    for (const studentId of ids) await client.query('INSERT INTO ALUNO_TURMA (turma_id, aluno_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [classId, studentId]);
+    for (const studentId of ids) {
+      await client.query(
+        `INSERT INTO HISTORICO_MATRICULA_TURMA (turma_id, aluno_id, data_matricula, data_saida)
+         SELECT turma_id, aluno_id, data_matricula, data_saida FROM ALUNO_TURMA
+         WHERE turma_id = $1 AND aluno_id = $2 AND data_saida IS NOT NULL
+         FOR UPDATE`, [classId, studentId],
+      );
+      await client.query(
+        `INSERT INTO ALUNO_TURMA (turma_id, aluno_id) VALUES ($1, $2)
+         ON CONFLICT (turma_id, aluno_id) DO UPDATE SET
+           data_matricula = CASE WHEN ALUNO_TURMA.data_saida IS NOT NULL THEN CURRENT_DATE ELSE ALUNO_TURMA.data_matricula END,
+           data_saida = NULL`, [classId, studentId],
+      );
+    }
     return ids.length;
   });
   if (added === null) return res.status(404).json({ error: 'Turma não encontrada nesta escola.' });
   if (added === false) return res.status(400).json({ error: 'Um ou mais alunos não estão ativos nesta escola.' });
   res.status(201).json({ matriculasCriadas: added });
+});
+
+router.delete('/:id/alunos/:studentId', allowRoles('admin', 'director'), validate(unenrollSchema), async (req, res) => {
+  const { id: classId, studentId } = req.validated.params;
+  const matricula = await inTransaction(async (client) => {
+    const { rows: [matriculaAtiva] } = await client.query(
+      `SELECT at.turma_id, at.aluno_id, at.data_matricula
+       FROM ALUNO_TURMA at JOIN TURMA t ON t.id = at.turma_id
+       WHERE at.turma_id = $1 AND at.aluno_id = $2 AND at.data_saida IS NULL
+         AND ($3 = 'admin' OR t.escola_id = $4) FOR UPDATE`,
+      [classId, studentId, req.user.role, req.user.schoolId],
+    );
+    if (!matriculaAtiva) return null;
+    const { rows: [encerrada] } = await client.query(
+      `UPDATE ALUNO_TURMA SET data_saida = GREATEST(CURRENT_DATE, data_matricula)
+       WHERE turma_id = $1 AND aluno_id = $2
+       RETURNING turma_id AS class_id, aluno_id AS student_id, data_matricula AS enrollment_date, data_saida AS exit_date`,
+      [classId, studentId],
+    );
+    return encerrada;
+  });
+  if (!matricula) return res.status(404).json({ error: 'Matrícula ativa não encontrada nesta escola.' });
+  res.json({ matricula });
 });
 
 export default router;
